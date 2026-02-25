@@ -6,7 +6,7 @@
  *  2. Game screen:  board + hand, no opponent hand shown
  */
 
-import { joinRoom, selfId } from 'https://esm.run/trystero';
+// Networking now uses PeerJS loaded via <script> tag in index.html
 
 // ── Constants ─────────────────────────────────────────────────
 const BOARD_LAYOUT = [
@@ -57,7 +57,12 @@ class SequenceGame {
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.deck = [];
         this.hand = [];
-        this.room = null;
+
+        // PeerJS variables
+        this.peer = null;
+        this.connections = {};
+        this.hostConnection = null;
+
         this.isHost = false;
         this.myColor = null;
         this.currentTurn = null;
@@ -71,11 +76,7 @@ class SequenceGame {
         this.started = false;
         this.hintsEnabled = false;
         this.hoveredCardIndex = null;
-
-        // Trystero senders
-        this.sendGameStart = null;
-        this.sendMove = null;
-        this.sendSync = null;
+        this.hands = {};         // Host saves all hands dealt for reconnects
 
         this.initSetup();
     }
@@ -95,6 +96,23 @@ class SequenceGame {
         const teamLabels = document.getElementById('team-labels');
         const nameInput = document.getElementById('player-name');
 
+        const renderSetupState = () => {
+            playersEl.innerHTML = '';
+            const myDisplay = this.myName || 'You';
+            const me = document.createElement('div');
+            me.className = 'player-entry me';
+            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
+            playersEl.appendChild(me);
+
+            this.peers.forEach((pid, i) => {
+                const el = document.createElement('div');
+                el.className = 'player-entry';
+                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
+                el.innerText = `👤 ${peerName}`;
+                playersEl.appendChild(el);
+            });
+        };
+
         // Name input
         nameInput.addEventListener('input', () => {
             this.myName = nameInput.value.trim();
@@ -104,37 +122,132 @@ class SequenceGame {
 
         // Determine room ID
         let roomId = window.location.hash.substring(1);
+        const savedRoomId = localStorage.getItem('sequence_roomID');
+        const savedIsHost = localStorage.getItem('sequence_isHost');
 
-        if (roomId) {
+        if (roomId && roomId === savedRoomId && savedIsHost === 'true') {
+            this.isHost = true;
+            statusEl.innerText = "Re-hosting room...";
+        } else if (roomId) {
             this.isHost = false;
             statusEl.innerText = "Joining room...";
+            localStorage.setItem('sequence_roomID', roomId);
+            localStorage.setItem('sequence_isHost', 'false');
+        } else if (savedRoomId && savedIsHost === 'true') {
+            roomId = savedRoomId;
+            window.location.hash = roomId;
+            this.isHost = true;
+            statusEl.innerText = "Re-hosting room...";
         } else {
             roomId = genId(8);
             window.location.hash = roomId;
             this.isHost = true;
             statusEl.innerText = "Room created!";
+            localStorage.setItem('sequence_roomID', roomId);
+            localStorage.setItem('sequence_isHost', 'true');
         }
 
-        // Join Trystero room
-        this.room = joinRoom({ appId: 'sequence-game-p2p-2025' }, roomId);
+        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
 
-        // Create all actions
-        const [sendGameStart, getGameStart] = this.room.makeAction('gameStart');
-        const [sendMove, getMove] = this.room.makeAction('move');
-        const [sendSync, getSync] = this.room.makeAction('sync');
-        const [sendConfig, getConfig] = this.room.makeAction('config');
-        const [sendName, getName] = this.room.makeAction('name');
+        this.peer = new Peer(this.isHost ? roomId : undefined);
 
-        this.sendGameStart = sendGameStart;
-        this.sendMove = sendMove;
-        this.sendSync = sendSync;
-        this.sendName = sendName;
-
-        // Receive name updates from peers
-        getName((name, peerId) => {
-            this.peerNames[peerId] = name;
-            renderSetupState();
+        this.peer.on('open', (id) => {
+            if (this.isHost) {
+                statusEl.innerText = "Waiting for players...";
+                inviteBox.style.display = 'block';
+                inviteUrl.value = shareUrl;
+                inviteUrl.addEventListener('click', () => {
+                    inviteUrl.select();
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        const originalLabel = document.querySelector('.invite-label').innerText;
+                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                        document.querySelector('.invite-label').style.color = 'var(--gold)';
+                        setTimeout(() => {
+                            document.querySelector('.invite-label').innerText = originalLabel;
+                            document.querySelector('.invite-label').style.color = '';
+                        }, 2000);
+                    });
+                });
+                teamCfg.style.display = 'block';
+                this.updateTeamLabels(teamLabels);
+                renderSetupState();
+            } else {
+                console.log("Attempting to join session:", roomId);
+                this.connectToHost(roomId);
+            }
         });
+
+        if (this.isHost) {
+            this.peer.on('connection', (conn) => {
+                this.setupConnection(conn);
+            });
+        }
+
+        // ── Actions Setup ──
+        this.sendName = (name) => this.broadcast('name', name);
+        this.sendConfig = (config) => this.broadcast('config', config);
+        this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
+        this.sendMove = (data) => this.broadcast('move', data);
+        this.sendSync = (data) => this.broadcast('sync', data);
+
+        // ── Data Handlers ──
+        this.handleData = (type, data, peerId) => {
+            if (type === 'name') {
+                this.peerNames[peerId] = data;
+                renderSetupState();
+                if (this.isHost) this.broadcast('name', data, peerId);
+            } else if (type === 'config' && !this.isHost) {
+                if (data.teamCount) {
+                    this.teamCount = data.teamCount;
+                    document.querySelectorAll('.team-btn').forEach(btn => {
+                        btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
+                    });
+                    this.updateTeamLabels(teamLabels);
+                }
+                if (data.hintsEnabled !== undefined) {
+                    this.hintsEnabled = data.hintsEnabled;
+                    const toggle = document.getElementById('show-hints-toggle');
+                    if (toggle) toggle.checked = this.hintsEnabled;
+                }
+                teamCfg.style.display = 'block';
+                playerList.style.display = 'block';
+            } else if (type === 'gameStart') {
+                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+                this.sequences = { red: 0, blue: 0, green: 0 };
+                document.getElementById('game-over-overlay').style.display = 'none';
+                document.getElementById('play-again-waiting').style.display = 'none';
+
+                this.deck = data.deck;
+                this.hand = data.myHand;
+                this.myColor = data.myColor;
+                this.currentTurn = data.currentTurn;
+                this.teamCount = data.teamCount;
+                this.colorNames = data.colorNames || {};
+                this.hintsEnabled = data.hintsEnabled || false;
+                this.started = true;
+                this.showGameScreen();
+
+                if (data.boardChips) {
+                    this.chips = data.boardChips;
+                    this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
+                    this.renderBoard();
+                    this.updateScoreUI();
+                }
+            } else if (type === 'move') {
+                this.applyOpponentMove(data);
+                this.currentTurn = data.nextTurn;
+                this.updateTurnUI();
+                if (this.isHost) this.broadcast('move', data, peerId);
+            } else if (type === 'sync') {
+                this.sequences = data.sequences;
+                this.updateScoreUI();
+                this.renderBoard();
+                if (data.winner) {
+                    this.currentTurn = null;
+                    this.showWinPopup(data.winner);
+                }
+            }
+        };
 
         // ── Setup UI ──
         // Team buttons
@@ -154,90 +267,9 @@ class SequenceGame {
             this.startGame();
         });
 
-        // Show invite link (host)
-        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
 
-        const renderSetupState = () => {
-            playersEl.innerHTML = '';
-            const myDisplay = this.myName || 'You';
-            const me = document.createElement('div');
-            me.className = 'player-entry me';
-            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            playersEl.appendChild(me);
 
-            this.peers.forEach((pid, i) => {
-                const el = document.createElement('div');
-                el.className = 'player-entry';
-                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
-                el.innerText = `👤 ${peerName}`;
-                playersEl.appendChild(el);
-            });
-        };
 
-        // ── Peer events ──
-        this.room.onPeerJoin(peerId => {
-            this.peers.push(peerId);
-
-            // Send my name to the new peer
-            if (this.myName) sendName(this.myName, peerId);
-
-            if (this.isHost) {
-                statusEl.innerText = `${this.peers.length + 1} players connected`;
-                inviteBox.style.display = 'block';
-                inviteUrl.value = shareUrl;
-                inviteUrl.addEventListener('click', () => {
-                    inviteUrl.select();
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                        const originalLabel = document.querySelector('.invite-label').innerText;
-                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
-                        document.querySelector('.invite-label').style.color = 'var(--gold)';
-                        setTimeout(() => {
-                            document.querySelector('.invite-label').innerText = originalLabel;
-                            document.querySelector('.invite-label').style.color = '';
-                        }, 2000);
-                    });
-                });
-                teamCfg.style.display = 'block';
-                playerList.style.display = 'block';
-                startBtn.style.display = 'block';
-                sendConfig({ teamCount: this.teamCount }, peerId);
-            } else {
-                statusEl.innerText = "Connected! Waiting for host to start...";
-                waitMsg.style.display = 'block';
-                playerList.style.display = 'block';
-            }
-
-            renderSetupState();
-        });
-
-        this.room.onPeerLeave(peerId => {
-            this.peers = this.peers.filter(p => p !== peerId);
-            const leaverName = this.peerNames[peerId] || 'A player';
-            delete this.peerNames[peerId];
-            renderSetupState();
-
-            if (this.started) {
-                this.log(`❌ ${leaverName} disconnected.`);
-            }
-        });
-
-        // Config updates from host
-        getConfig((data) => {
-            if (data.teamCount) {
-                this.teamCount = data.teamCount;
-                document.querySelectorAll('.team-btn').forEach(btn => {
-                    btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
-                });
-                this.updateTeamLabels(teamLabels);
-            }
-            if (data.hintsEnabled !== undefined) {
-                this.hintsEnabled = data.hintsEnabled;
-                const toggle = document.getElementById('show-hints-toggle');
-                if (toggle) toggle.checked = this.hintsEnabled;
-            }
-            teamCfg.style.display = 'block';
-            playerList.style.display = 'block';
-        });
 
         // Handle hint toggle change
         const hintToggle = document.getElementById('show-hints-toggle');
@@ -248,62 +280,7 @@ class SequenceGame {
             }
         });
 
-        // Game start from host
-        getGameStart((data) => {
-            // Reset local state for next round
-            this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-            this.sequences = { red: 0, blue: 0, green: 0 };
-            document.getElementById('game-over-overlay').style.display = 'none';
-            document.getElementById('play-again-waiting').style.display = 'none';
 
-            this.deck = data.deck;
-            this.hand = data.myHand;
-            this.myColor = data.myColor;
-            this.currentTurn = data.currentTurn;
-            this.teamCount = data.teamCount;
-            this.colorNames = data.colorNames || {};
-            this.hintsEnabled = data.hintsEnabled || false;
-            this.started = true;
-            this.showGameScreen();
-        });
-
-        getMove((data) => {
-            this.applyOpponentMove(data);
-            this.currentTurn = data.nextTurn;
-            this.updateTurnUI();
-        });
-
-        getSync((data) => {
-            this.sequences = data.sequences;
-            this.updateScoreUI();
-            this.renderBoard();
-            if (data.winner) {
-                this.currentTurn = null;
-                this.showWinPopup(data.winner);
-            }
-        });
-
-        // Host-only: show invite immediately
-        if (this.isHost) {
-            inviteBox.style.display = 'block';
-            inviteUrl.value = shareUrl;
-            inviteUrl.addEventListener('click', () => {
-                inviteUrl.select();
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                    const label = document.querySelector('.invite-label');
-                    const originalText = label.innerText;
-                    label.innerText = '📋 Copied to clipboard!';
-                    label.style.color = 'var(--gold)';
-                    setTimeout(() => {
-                        label.innerText = originalText;
-                        label.style.color = '';
-                    }, 2000);
-                });
-            });
-            teamCfg.style.display = 'block';
-            this.updateTeamLabels(teamLabels);
-            renderSetupState();
-        }
 
         // Play Again Button
         const playAgainBtn = document.getElementById('play-again-btn');
@@ -319,6 +296,135 @@ class SequenceGame {
                     playAgainBtn.style.display = 'none';
                 }
             });
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible') {
+                if (!this.isHost && (!this.hostConnection || !this.hostConnection.open)) {
+                    document.getElementById('setup-status').innerText = "Resuming session...";
+                    this.attemptReconnect();
+                }
+            }
+        });
+    }
+
+    connectToHost(hostID) {
+        const newConn = this.peer.connect(hostID, { reliable: true });
+        this.hostConnection = newConn;
+        this.setupConnection(newConn);
+    }
+
+    attemptReconnect() {
+        const roomID = window.location.hash.substring(1);
+        if (roomID && (!this.hostConnection || !this.hostConnection.open)) {
+            setTimeout(() => {
+                console.log("Retrying connection...");
+                this.connectToHost(roomID);
+            }, 3000);
+        }
+    }
+
+    setupConnection(conn) {
+        const statusEl = document.getElementById('setup-status');
+        const waitMsg = document.getElementById('waiting-msg');
+        const playerList = document.getElementById('player-list');
+        const startBtn = document.getElementById('start-game-btn');
+
+        conn.on('open', () => {
+            if (this.isHost) {
+                if (!this.peers.includes(conn.peer)) {
+                    this.peers.push(conn.peer);
+                }
+                this.connections[conn.peer] = conn;
+
+                statusEl.innerText = `${this.peers.length + 1} players connected`;
+                playerList.style.display = 'block';
+                startBtn.style.display = 'block';
+
+                this.sendTo(conn.peer, 'config', { teamCount: this.teamCount, hintsEnabled: this.hintsEnabled });
+                if (this.myName) {
+                    this.sendTo(conn.peer, 'name', this.myName);
+                }
+
+                if (this.started) {
+                    const knownName = this.peerNames[conn.peer] || conn.peer;
+                    const colorNamesEntry = Object.entries(this.colorNames).find(([color, name]) => name === knownName);
+                    let theirColor = colorNamesEntry ? colorNamesEntry[0] : null;
+
+                    if (theirColor && this.hands && this.hands[conn.peer]) {
+                        this.sendTo(conn.peer, 'gameStart', {
+                            deck: [...this.deck],
+                            myHand: this.hands[conn.peer],
+                            myColor: theirColor,
+                            currentTurn: this.currentTurn,
+                            teamCount: this.teamCount,
+                            colorNames: this.colorNames,
+                            hintsEnabled: this.hintsEnabled,
+                            boardChips: this.chips, // Custom field for reconnect
+                            sequences: this.sequences
+                        });
+                    }
+                }
+
+                this.handleData('name', this.peerNames[conn.peer] || 'Player ' + (this.peers.length + 1), conn.peer);
+            } else {
+                statusEl.innerText = "Connected! Waiting for host to start...";
+                waitMsg.style.display = 'block';
+                playerList.style.display = 'block';
+                if (this.myName) {
+                    this.sendName(this.myName);
+                }
+            }
+        });
+
+        conn.on('data', (payload) => {
+            if (payload && payload.type) {
+                this.handleData(payload.type, payload.data, conn.peer);
+            }
+        });
+
+        conn.on('close', () => {
+            if (this.isHost) {
+                this.peers = this.peers.filter(p => p !== conn.peer);
+                delete this.connections[conn.peer];
+                const leaverName = this.peerNames[conn.peer] || 'A player';
+                this.handleData('name', leaverName + ' (Disconnected)', conn.peer);
+                if (this.started) {
+                    this.log(`❌ ${leaverName} disconnected.`);
+                }
+            } else {
+                statusEl.innerText = "Connection lost. Attempting reconnect...";
+                this.attemptReconnect();
+            }
+        });
+
+        conn.on('error', (err) => {
+            console.error("Connection error:", err);
+            if (!this.isHost) {
+                this.attemptReconnect();
+            }
+        });
+    }
+
+    sendTo(peerId, type, data) {
+        if (this.connections[peerId] && this.connections[peerId].open) {
+            this.connections[peerId].send({ type, data });
+        } else if (!this.isHost && this.hostConnection && this.hostConnection.open) {
+            this.hostConnection.send({ type, data });
+        }
+    }
+
+    broadcast(type, data, excludePeerId = null) {
+        if (this.isHost) {
+            for (let pid of this.peers) {
+                if (pid !== excludePeerId) {
+                    this.sendTo(pid, type, data);
+                }
+            }
+        } else {
+            if (this.hostConnection && this.hostConnection.open) {
+                this.hostConnection.send({ type, data });
+            }
         }
     }
 
