@@ -365,61 +365,10 @@ body {
     .sidebar {
         display: none;
     }
-<<<<<<< HEAD
 
-    #global-layout {
-        overflow-y: auto;
-        /* Allow scrolling to bottom ad on mobile/tablet */
-        height: auto;
-        min-height: 100dvh;
-    }
-
-    #main-content,
-    #setup-screen,
-    #game-screen {
-        height: auto;
-        min-height: calc(100vh + 120px);
-        overflow: visible;
-    }
-
-    #game-container {
-        padding-bottom: 120px;
-    }
-=======
->>>>>>> parent of 74bb5b1 (..)
 }
 
-.mobile-bottom-ad {
-    display: flex;
-    /* Show by default if sidebars are hidden */
-    width: 100%;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.85);
-    /* Increased opacity for fixed bar */
-    border-top: 1px solid var(--glass-border);
-    flex-shrink: 0;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    z-index: 2000;
-}
 
-/* On large screens, hide the bottom ad since sidebars are visible */
-@media (min-width: 1201px) {
-    .mobile-bottom-ad {
-        display: none;
-    }
-}
-
-.mobile-bottom-ad .ad-placeholder {
-    width: 320px;
-    /* Standard mobile banner width */
-    height: 100px;
-    writing-mode: horizontal-tb;
-    letter-spacing: 2px;
-}
 
 #game-container {
     flex: 1;
@@ -891,25 +840,7 @@ header h1 {
    MOBILE RESPONSIVE
    ══════════════════════════════════════════ */
 @media (max-width: 768px) {
-    #global-layout {
-        overflow-y: auto;
-        /* Allow scrolling to bottom ad on mobile/tablet */
-        height: auto;
-        min-height: 100dvh;
-    }
 
-    #main-content,
-    #setup-screen {
-        height: auto;
-        min-height: calc(100vh + 120px);
-        overflow: visible;
-    }
-
-    #game-container {
-        padding-bottom: 120px;
-        /* Padding for the fixed bottom ad */
-    }
-}
 
     .setup-split {
         flex-direction: column;
