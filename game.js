@@ -95,6 +95,8 @@ class SequenceGame {
         const waitMsg = document.getElementById('waiting-msg');
         const teamLabels = document.getElementById('team-labels');
         const nameInput = document.getElementById('player-name');
+        const createSec = document.getElementById('create-game-section');
+        const createBtn = document.getElementById('create-game-btn');
 
         const renderSetupState = () => {
             playersEl.innerHTML = '';
@@ -139,89 +141,98 @@ class SequenceGame {
             renderSetupState();
         });
 
-        // Determine room ID
-        let roomId = window.location.hash.substring(1);
-        const savedRoomId = localStorage.getItem('sequence_roomID');
-        const savedIsHost = localStorage.getItem('sequence_isHost');
-
-        if (roomId && roomId === savedRoomId && savedIsHost === 'true') {
-            this.isHost = true;
-            statusEl.innerText = "Re-hosting room...";
-        } else if (roomId) {
-            this.isHost = false;
-            statusEl.innerText = "Joining room...";
-            localStorage.setItem('sequence_roomID', roomId);
-            localStorage.setItem('sequence_isHost', 'false');
-        } else if (savedRoomId && savedIsHost === 'true') {
-            roomId = savedRoomId;
-            window.location.hash = roomId;
-            this.isHost = true;
-            statusEl.innerText = "Re-hosting room...";
-        } else {
-            roomId = genId(8);
-            window.location.hash = roomId;
-            this.isHost = true;
-            statusEl.innerText = "Room created!";
-            localStorage.setItem('sequence_roomID', roomId);
-            localStorage.setItem('sequence_isHost', 'true');
-        }
-
-        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
-
-        this.peer = new Peer(this.isHost ? roomId : undefined);
-
-        this.peer.on('open', (id) => {
-            if (this.isHost) {
-                statusEl.innerText = "Waiting for players...";
-                inviteBox.style.display = 'block';
-                inviteUrl.value = shareUrl;
-                inviteUrl.addEventListener('click', () => {
-                    inviteUrl.select();
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                        const originalLabel = document.querySelector('.invite-label').innerText;
-                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
-                        document.querySelector('.invite-label').style.color = 'var(--gold)';
-                        setTimeout(() => {
-                            document.querySelector('.invite-label').innerText = originalLabel;
-                            document.querySelector('.invite-label').style.color = '';
-                        }, 2000);
-                    });
-                });
-                teamCfg.style.display = 'block';
-                this.updateTeamLabels(teamLabels);
-                renderSetupState();
-            } else {
-                console.log("Attempting to join session:", roomId);
-                this.connectToHost(roomId);
-            }
-        });
-
-        if (this.isHost) {
-            this.peer.on('connection', (conn) => {
-                this.setupConnection(conn);
-            });
-        }
-
-        this.peer.on('error', (err) => {
-            console.error("PeerJS Network Error:", err);
-            if (!this.isHost) {
-                if (err.type === 'peer-unavailable') {
-                    statusEl.innerText = "Host room not found. Retrying in 5s...";
-                } else {
-                    statusEl.innerText = "Network error. Retrying in 5s...";
-                }
-                setTimeout(() => this.attemptReconnect(), 5000);
-            } else {
-                statusEl.innerText = "Network Error: " + err.type;
-            }
-        });
-
         // ── Actions Setup ──
         this.sendName = (name) => this.broadcast('name', name);
         this.sendConfig = (config) => this.broadcast('config', config);
         this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
         this.sendMove = (data) => this.broadcast('move', data);
         this.sendSync = (data) => this.broadcast('sync', data);
+
+        const startSession = (roomId, isHost) => {
+            this.isHost = isHost;
+            createSec.style.display = 'none';
+
+            if (isHost && window.location.hash !== '#' + roomId) {
+                window.location.hash = roomId;
+            }
+
+            localStorage.setItem('sequence_roomID', roomId);
+            localStorage.setItem('sequence_isHost', isHost ? 'true' : 'false');
+
+            const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
+            this.peer = new Peer(this.isHost ? roomId : undefined);
+
+            this.peer.on('open', (id) => {
+                if (this.isHost) {
+                    statusEl.innerText = "Waiting for players...";
+                    inviteBox.style.display = 'block';
+                    inviteUrl.value = shareUrl;
+                    inviteUrl.addEventListener('click', () => {
+                        inviteUrl.select();
+                        navigator.clipboard.writeText(shareUrl).then(() => {
+                            const originalLabel = document.querySelector('.invite-label').innerText;
+                            document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                            document.querySelector('.invite-label').style.color = 'var(--gold)';
+                            setTimeout(() => {
+                                document.querySelector('.invite-label').innerText = originalLabel;
+                                document.querySelector('.invite-label').style.color = '';
+                            }, 2000);
+                        });
+                    });
+                    teamCfg.style.display = 'block';
+                    this.updateTeamLabels(teamLabels);
+                    renderSetupState();
+                } else {
+                    console.log("Attempting to join session:", roomId);
+                    this.connectToHost(roomId);
+                }
+            });
+
+            if (this.isHost) {
+                this.peer.on('connection', (conn) => {
+                    this.setupConnection(conn);
+                });
+            }
+
+            this.peer.on('error', (err) => {
+                console.error("PeerJS Network Error:", err);
+                if (!this.isHost) {
+                    if (err.type === 'peer-unavailable') {
+                        statusEl.innerText = "Host room not found. Retrying in 5s...";
+                    } else {
+                        statusEl.innerText = "Network error. Retrying in 5s...";
+                    }
+                    setTimeout(() => this.attemptReconnect(), 5000);
+                } else {
+                    statusEl.innerText = "Network Error: " + err.type;
+                }
+            });
+        };
+
+        // Determine room ID and start flow
+        const hashId = window.location.hash.substring(1);
+        const savedRoomId = localStorage.getItem('sequence_roomID');
+        const savedIsHost = localStorage.getItem('sequence_isHost');
+
+        if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
+            statusEl.innerText = "Re-hosting room...";
+            startSession(hashId, true);
+        } else if (hashId) {
+            statusEl.innerText = "Joining room...";
+            startSession(hashId, false);
+        } else if (savedRoomId && savedIsHost === 'true') {
+            createSec.style.display = 'block';
+            statusEl.innerText = "Ready to start a game";
+        } else {
+            createSec.style.display = 'block';
+            statusEl.innerText = "Welcome to Very Wild Jacks";
+        }
+
+        createBtn.addEventListener('click', () => {
+            const newId = genId(8);
+            statusEl.innerText = "Creating room...";
+            startSession(newId, true);
+        });
 
         // ── Data Handlers ──
         this.handleData = (type, data, peerId) => {
@@ -301,7 +312,7 @@ class SequenceGame {
                 this.teamCount = parseInt(btn.dataset.teams);
                 this.updateTeamLabels(teamLabels);
                 // Tell peers about config change
-                sendConfig({ teamCount: this.teamCount });
+                this.sendConfig({ teamCount: this.teamCount });
             });
         });
 
@@ -319,7 +330,7 @@ class SequenceGame {
         hintToggle.addEventListener('change', () => {
             this.hintsEnabled = hintToggle.checked;
             if (this.isHost) {
-                sendConfig({ hintsEnabled: this.hintsEnabled });
+                this.sendConfig({ hintsEnabled: this.hintsEnabled });
             }
         });
 
