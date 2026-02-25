@@ -840,9 +840,27 @@ header h1 {
    MOBILE RESPONSIVE
    ══════════════════════════════════════════ */
 @media (max-width: 768px) {
+    body {
+        overflow-y: auto;
+        height: auto;
+    }
 
+    #global-layout {
+        overflow-y: auto;
+        height: auto;
+        min-height: 100dvh;
+    }
+
+    #main-content,
+    #setup-screen,
+    #game-screen {
+        height: auto;
+        min-height: 100dvh;
+        overflow: visible;
+    }
 
     .setup-split {
+
         flex-direction: column;
         align-items: center;
     }
