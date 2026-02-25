@@ -924,10 +924,14 @@ header h1 {
 
     #hand-panel {
         padding-top: 14px;
+        padding-bottom: 8px;
+        /* Lift hand slightly */
     }
 
     #game-log {
-        height: 44px;
+        height: 48px;
+        margin-bottom: 25px;
+        /* Lift log up from the very bottom for better reach */
     }
 }
 
@@ -1090,7 +1094,8 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 /* Emoji Picker & Floats */
 #emoji-picker-container {
     position: absolute;
-    bottom: 5px;
+    bottom: 25px;
+    /* Lifted up for better reach */
     right: 5px;
     z-index: 2000;
 }
