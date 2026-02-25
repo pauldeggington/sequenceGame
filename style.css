@@ -1086,3 +1086,76 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
         opacity: 1;
     }
 }
+
+/* Emoji Picker & Floats */
+#emoji-picker-container {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    z-index: 2000;
+}
+
+#emoji-menu {
+    position: absolute;
+    bottom: 45px;
+    right: 0;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.emoji-opt {
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+    user-select: none;
+}
+
+.emoji-opt:hover {
+    transform: scale(1.2);
+}
+
+#emoji-float-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1500;
+}
+
+.floating-emoji {
+    position: absolute;
+    font-size: 1.8rem;
+    animation: emoji-float 3s ease-out forwards;
+    opacity: 0.8;
+}
+
+@keyframes emoji-float {
+    0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+        transform: translateY(-20px) scale(1.1);
+    }
+
+    100% {
+        transform: translateY(-150px) scale(1);
+        opacity: 0;
+    }
+}
+
+#board-container {
+    position: relative;
+    /* Ensure floats are relative to board */
+}

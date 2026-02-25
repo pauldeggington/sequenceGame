@@ -147,6 +147,7 @@ class SequenceGame {
         this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
         this.sendMove = (data) => this.broadcast('move', data);
         this.sendSync = (data) => this.broadcast('sync', data);
+        this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
 
         const startSession = (roomId, isHost) => {
             this.isHost = isHost;
@@ -300,6 +301,9 @@ class SequenceGame {
                     this.currentTurn = null;
                     this.showWinPopup(data.winner);
                 }
+            } else if (type === 'emoji') {
+                this.showEmojiFloat(data);
+                if (this.isHost) this.broadcast('emoji', data, peerId);
             }
         };
 
@@ -601,6 +605,25 @@ class SequenceGame {
         this.turnIndicator = document.getElementById('turn-indicator');
         this.logEl = document.getElementById('log-content');
         this.jackHint = document.getElementById('jack-hint');
+
+        // Emoji UI initialization
+        const emojiTrigger = document.getElementById('emoji-trigger');
+        const emojiMenu = document.getElementById('emoji-menu');
+        if (emojiTrigger && emojiMenu) {
+            emojiTrigger.onclick = (e) => {
+                e.stopPropagation();
+                emojiMenu.style.display = emojiMenu.style.display === 'none' ? 'block' : 'none';
+            };
+            document.querySelectorAll('.emoji-opt').forEach(opt => {
+                opt.onclick = () => {
+                    const emoji = opt.innerText;
+                    this.sendEmoji(emoji);
+                    this.showEmojiFloat(emoji);
+                    emojiMenu.style.display = 'none';
+                };
+            });
+            document.addEventListener('click', () => emojiMenu.style.display = 'none');
+        }
     }
 
     createDeck() {
@@ -1019,6 +1042,23 @@ class SequenceGame {
         this._seqPopupTimer = setTimeout(() => {
             overlay.style.display = 'none';
         }, 3000);
+    }
+
+    showEmojiFloat(emoji) {
+        const container = document.getElementById('emoji-float-container');
+        if (!container) return;
+
+        const el = document.createElement('div');
+        el.className = 'floating-emoji';
+        el.innerText = emoji;
+
+        // Random horizontal position
+        const left = 20 + Math.random() * 60; // 20% to 80%
+        el.style.left = left + '%';
+        el.style.bottom = '20px';
+
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
     }
 
     log(msg) {
