@@ -264,6 +264,7 @@ class SequenceGame {
                 this.myColor = data.myColor;
                 this.currentTurn = data.currentTurn;
                 this.teamCount = data.teamCount;
+                this.winTarget = data.winTarget || (this.teamCount === 3 ? 1 : 2);
                 this.colorNames = data.colorNames || {};
                 this.hintsEnabled = data.hintsEnabled || false;
                 this.started = true;
@@ -400,6 +401,7 @@ class SequenceGame {
                             myColor: theirColor,
                             currentTurn: this.currentTurn,
                             teamCount: this.teamCount,
+                            winTarget: this.winTarget,
                             colorNames: this.colorNames,
                             hintsEnabled: this.hintsEnabled,
                             boardChips: this.chips, // Custom field for reconnect
@@ -496,6 +498,7 @@ class SequenceGame {
         const colors = TEAM_COLORS.slice(0, this.teamCount);
         const totalPlayers = this.peers.length + 1;
         const cardsPerPlayer = totalPlayers <= 2 ? 7 : totalPlayers <= 4 ? 6 : 5;
+        this.winTarget = (totalPlayers > 2 && this.teamCount === 3) ? 1 : 2;
 
         // Assign colors round-robin
         const assignments = [];
@@ -536,6 +539,7 @@ class SequenceGame {
                     myColor: a.color,
                     currentTurn: colors[0],
                     teamCount: this.teamCount,
+                    winTarget: this.winTarget,
                     colorNames: this.colorNames,
                     hintsEnabled: this.hintsEnabled
                 }, a.peerId);
@@ -908,7 +912,7 @@ class SequenceGame {
 
         this.updateScoreUI();
 
-        const winTarget = this.teamCount === 3 ? 1 : 2;
+        const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
         const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
 
         if (winner) {
