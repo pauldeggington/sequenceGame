@@ -549,6 +549,12 @@ class SequenceGame {
             document.getElementById('green-score-wrap').style.display = 'inline';
         }
 
+        const teamEmojis = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
+        const myTeamEl = document.getElementById('my-team-name');
+        if (myTeamEl && this.myColor && teamEmojis[this.myColor]) {
+            myTeamEl.innerHTML = `<span class="team-tag ${this.myColor}" style="padding: 2px 8px;">${teamEmojis[this.myColor]}</span>`;
+        }
+
         this.initGameElements();
         this.renderBoard();
         this.renderHand();
