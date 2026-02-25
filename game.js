@@ -638,7 +638,7 @@ class SequenceGame {
                 if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
 
                 // Hint highlighting (Selected OR Hovered)
-                if (this.hintsEnabled && !this.jackMode) {
+                if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
                     const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
                     const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
 
@@ -875,6 +875,7 @@ class SequenceGame {
 
         this.selectedCardIndex = null;
         this.jackMode = null;
+        this.hoveredCardIndex = null;
         this.currentTurn = nextTurn;
 
         this.renderHand();
