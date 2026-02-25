@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Very Wild Jacks</title>
+    <meta name="description" content="Play the Very Wild Jacks board game online with friends using P2P networking.">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap"
+        rel="stylesheet">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4922815922422305"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div id="global-layout">
+        <div class="sidebar-wrapper">
+            <aside class="sidebar sidebar-left">
+                <div class="ad-placeholder">Ad Banner</div>
+            </aside>
+
+            <main id="main-content">
+                <!-- ══════════ SETUP SCREEN ══════════ -->
+                <div id="setup-screen">
+                    <div class="setup-split">
+                        <div class="setup-card glass-panel">
+                            <h1>Very Wild Jacks</h1>
+                            <p class="setup-subtitle">Classic Board Game • P2P Multiplayer</p>
+
+                            <div class="setup-section name-section">
+                                <label for="player-name" class="name-label">Your Name</label>
+                                <input id="player-name" type="text" placeholder="Enter your name..." maxlength="20"
+                                    autocomplete="off">
+                            </div>
+
+                            <div id="setup-connection" class="setup-section">
+                                <p id="setup-status">Connecting to network...</p>
+                                <div id="invite-box" style="display:none">
+                                    <p class="invite-label">Invite others using the following link:</p>
+                                    <input id="invite-url" type="text" readonly>
+                                </div>
+                            </div>
+
+                            <div id="team-config" class="setup-section" style="display:none">
+                                <h3>Game Options</h3>
+                                <div class="options-row">
+                                    <label class="hint-toggle">
+                                        <input type="checkbox" id="show-hints-toggle">
+                                        <span class="toggle-switch"></span>
+                                        <span class="toggle-label">Show Board Hints</span>
+                                    </label>
+                                </div>
+                                <h3>Teams</h3>
+                                <div class="team-buttons">
+                                    <button class="team-btn selected" data-teams="2">2 Teams</button>
+                                    <button class="team-btn" data-teams="3">3 Teams</button>
+                                </div>
+                                <div id="team-labels" class="team-labels">
+                                    <span class="team-tag red">🔴 Red</span>
+                                    <span class="team-tag blue">🔵 Blue</span>
+                                </div>
+                            </div>
+
+                            <div id="player-list" class="setup-section" style="display:none">
+                                <h3>Players</h3>
+                                <div id="players-connected"></div>
+                            </div>
+
+                            <button id="start-game-btn" class="premium-button start-btn" style="display:none">
+                                Start Game
+                            </button>
+
+                            <p id="waiting-msg" class="waiting-text" style="display:none">Waiting for host to start...
+                            </p>
+                        </div>
+
+                        <!-- Instructions Box -->
+                        <div class="setup-card glass-panel instructions-card">
+                            <h2>How to Play</h2>
+                            <ul class="rules-list">
+                                <li><strong>Goal:</strong> Form 2 sequences (1 if 3-teams) to win. Note: A sequence is 5
+                                    connected chips (horizontal, vertical, or diagonal).</li>
+                                <li><strong>Play a card:</strong> Select a card from your hand and place a chip on the
+                                    corresponding free space on the board.</li>
+                                <li><strong>Two-Eyed Jacks:</strong> These are WILD. They allow you to place a chip on
+                                    ANY empty space.</li>
+                                <li><strong>One-Eyed Jacks:</strong> These are REMOVE cards. Pick any space occupied by
+                                    an opponent's chip to take it off the board. (Note: You cannot remove chips that are
+                                    already part of a completed sequence).</li>
+                                <li><strong>Free Spaces:</strong> The four corners (★) are "free" spaces. They act as
+                                    wild chips, meaning you only need 4 chips to build a sequence out of a corner.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════ GAME SCREEN ══════════ -->
+                <div id="game-screen" style="display:none">
+                    <!-- Turn overlay -->
+                    <div id="turn-overlay" class="turn-overlay" style="display:none">
+                        <div class="turn-overlay-text">Your Turn</div>
+                    </div>
+
+                    <div id="game-container">
+                        <header>
+                            <h1>Very Wild Jacks</h1>
+                            <div id="connection-status" class="glass-panel">
+                                <div class="turn-indicator" id="turn-indicator">Waiting...</div>
+                                <div class="player-chips">
+                                    <div class="chip-count red">🔴 <span id="red-score">0</span></div>
+                                    <div class="chip-count blue">🔵 <span id="blue-score">0</span></div>
+                                    <div class="chip-count green" id="green-score-wrap" style="display:none">🟢 <span
+                                            id="green-score">0</span></div>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div id="game-layout">
+                            <div id="board-container">
+                                <div id="game-board" class="board"></div>
+                            </div>
+
+                            <div id="hand-panel">
+                                <div id="jack-hint" class="jack-hint-panel" style="display:none"></div>
+                                <div id="player-hand" class="hand"></div>
+                            </div>
+                        </div>
+
+                        <div id="game-log" class="glass-panel">
+                            <div id="log-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="sidebar sidebar-right">
+                <div class="ad-placeholder">Ad Banner</div>
+            </aside>
+        </div>
+
+        <div class="mobile-bottom-ad">
+            <div class="ad-placeholder">Mobile Bottom Ad Banner</div>
+        </div>
+    </div>
+
+    <!-- ══════════ GAME OVER POPUP ══════════ -->
+    <div id="game-over-overlay" class="win-popup-overlay" style="display:none">
+        <div class="win-popup glass-panel">
+            <h2 id="winner-text">Red Team Wins!</h2>
+            <p>Congratulations!</p>
+            <button id="play-again-btn" class="premium-button">Play Again</button>
+            <p id="play-again-waiting" style="display:none; color:white; margin-top:10px;">Waiting for host...</p>
+        </div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+
+</html>
