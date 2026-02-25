@@ -615,14 +615,15 @@ class SequenceGame {
                 emojiMenu.style.display = emojiMenu.style.display === 'none' ? 'block' : 'none';
             };
             document.querySelectorAll('.emoji-opt').forEach(opt => {
-                opt.onclick = () => {
+                opt.onclick = (e) => {
+                    e.stopPropagation();
                     const emoji = opt.innerText;
                     this.sendEmoji(emoji);
                     this.showEmojiFloat(emoji);
-                    emojiMenu.style.display = 'none';
                 };
             });
             document.addEventListener('click', () => emojiMenu.style.display = 'none');
+            emojiMenu.onclick = (e) => e.stopPropagation();
         }
     }
 
