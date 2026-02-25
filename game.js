@@ -1026,7 +1026,16 @@ class SequenceGame {
         const el = document.createElement('div');
         el.className = 'log-entry';
         el.innerText = msg;
-        this.logEl.prepend(el);
+        this.logEl.appendChild(el);
+
+        // Auto-scroll to the new entry
+        const container = document.getElementById('game-log');
+        if (container) {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }
 }
 
