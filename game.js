@@ -107,16 +107,35 @@ class SequenceGame {
             this.peers.forEach((pid, i) => {
                 const el = document.createElement('div');
                 el.className = 'player-entry';
-                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
+                let peerName = this.peerNames[pid];
+                if (!peerName) {
+                    if (pid === 'HOST') peerName = 'Host';
+                    else peerName = `Player ${i + 2}`;
+                }
                 el.innerText = `👤 ${peerName}`;
                 playersEl.appendChild(el);
             });
         };
 
+        this.syncPlayers = () => {
+            if (this.isHost) {
+                this.broadcast('players_sync', {
+                    hostName: this.myName,
+                    peers: this.peers,
+                    peerNames: this.peerNames
+                });
+                renderSetupState();
+            }
+        };
+
         // Name input
         nameInput.addEventListener('input', () => {
             this.myName = nameInput.value.trim();
-            if (this.sendName) this.sendName(this.myName);
+            if (this.isHost) {
+                this.syncPlayers();
+            } else if (this.sendName) {
+                this.sendName(this.myName);
+            }
             renderSetupState();
         });
 
@@ -193,9 +212,18 @@ class SequenceGame {
         // ── Data Handlers ──
         this.handleData = (type, data, peerId) => {
             if (type === 'name') {
-                this.peerNames[peerId] = data;
-                renderSetupState();
-                if (this.isHost) this.broadcast('name', data, peerId);
+                if (this.isHost) {
+                    this.peerNames[peerId] = data;
+                    this.syncPlayers();
+                }
+            } else if (type === 'players_sync') {
+                if (!this.isHost) {
+                    this.peers = data.peers.filter(id => id !== this.peer.id);
+                    if (!this.peers.includes('HOST')) this.peers.unshift('HOST');
+                    this.peerNames = data.peerNames;
+                    this.peerNames['HOST'] = data.hostName ? data.hostName + " (Host)" : "Host";
+                    renderSetupState();
+                }
             } else if (type === 'config' && !this.isHost) {
                 if (data.teamCount) {
                     this.teamCount = data.teamCount;
@@ -365,8 +393,10 @@ class SequenceGame {
                         });
                     }
                 }
-
-                this.handleData('name', this.peerNames[conn.peer] || 'Player ' + (this.peers.length + 1), conn.peer);
+                if (!this.peerNames[conn.peer]) {
+                    this.peerNames[conn.peer] = 'Player ' + (this.peers.length + 1);
+                }
+                this.syncPlayers();
             } else {
                 statusEl.innerText = "Connected! Waiting for host to start...";
                 waitMsg.style.display = 'block';
@@ -388,7 +418,8 @@ class SequenceGame {
                 this.peers = this.peers.filter(p => p !== conn.peer);
                 delete this.connections[conn.peer];
                 const leaverName = this.peerNames[conn.peer] || 'A player';
-                this.handleData('name', leaverName + ' (Disconnected)', conn.peer);
+                delete this.peerNames[conn.peer];
+                this.syncPlayers();
                 if (this.started) {
                     this.log(`❌ ${leaverName} disconnected.`);
                 }
@@ -900,6 +931,9 @@ class SequenceGame {
         if (mine) {
             this.turnIndicator.innerText = "Your Turn!";
             this.showTurnOverlay();
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
         } else {
             const name = (this.colorNames && this.colorNames[this.currentTurn]) || this.currentTurn;
             this.turnIndicator.innerText = `⏳ ${name}'s turn…`;
