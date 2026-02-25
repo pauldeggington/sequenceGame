@@ -901,6 +901,7 @@ class SequenceGame {
             if (count > this.sequences[color]) {
                 this.sequences[color] = count;
                 this.log(`🎉 ${color} formed sequence #${count}!`);
+                this.showSequencePopup(color);
                 updated = true;
             }
         }
@@ -979,6 +980,29 @@ class SequenceGame {
             text.style.color = winner === 'red' ? '#ff7675' : (winner === 'blue' ? '#74b9ff' : '#55efc4');
             overlay.style.display = 'flex';
         }
+    }
+
+    showSequencePopup(color) {
+        const overlay = document.getElementById('sequence-popup-overlay');
+        const subtitle = document.getElementById('seq-popup-subtitle');
+        if (!overlay || !subtitle) return;
+
+        const teamName = color.charAt(0).toUpperCase() + color.slice(1);
+        const teamColors = { red: '#ff7675', blue: '#74b9ff', green: '#55efc4' };
+
+        subtitle.innerHTML = `<span style="color: ${teamColors[color] || 'white'}; font-weight: bold;">${teamName} Team</span> completed a sequence!`;
+
+        // Remove existing animation and trigger reflow
+        overlay.style.animation = 'none';
+        overlay.offsetHeight; /* trigger reflow */
+        overlay.style.animation = null;
+
+        overlay.style.display = 'flex';
+
+        clearTimeout(this._seqPopupTimer);
+        this._seqPopupTimer = setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 3000);
     }
 
     log(msg) {
