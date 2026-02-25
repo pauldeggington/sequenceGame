@@ -202,6 +202,20 @@ class SequenceGame {
             });
         }
 
+        this.peer.on('error', (err) => {
+            console.error("PeerJS Network Error:", err);
+            if (!this.isHost) {
+                if (err.type === 'peer-unavailable') {
+                    statusEl.innerText = "Host room not found. Retrying in 5s...";
+                } else {
+                    statusEl.innerText = "Network error. Retrying in 5s...";
+                }
+                setTimeout(() => this.attemptReconnect(), 5000);
+            } else {
+                statusEl.innerText = "Network Error: " + err.type;
+            }
+        });
+
         // ── Actions Setup ──
         this.sendName = (name) => this.broadcast('name', name);
         this.sendConfig = (config) => this.broadcast('config', config);
