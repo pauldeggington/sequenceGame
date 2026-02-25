@@ -185,7 +185,18 @@ class SequenceGame {
                 statusEl.innerText = `${this.peers.length + 1} players connected`;
                 inviteBox.style.display = 'block';
                 inviteUrl.value = shareUrl;
-                inviteUrl.addEventListener('click', () => { inviteUrl.select(); });
+                inviteUrl.addEventListener('click', () => {
+                    inviteUrl.select();
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        const originalLabel = document.querySelector('.invite-label').innerText;
+                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                        document.querySelector('.invite-label').style.color = 'var(--gold)';
+                        setTimeout(() => {
+                            document.querySelector('.invite-label').innerText = originalLabel;
+                            document.querySelector('.invite-label').style.color = '';
+                        }, 2000);
+                    });
+                });
                 teamCfg.style.display = 'block';
                 playerList.style.display = 'block';
                 startBtn.style.display = 'block';
@@ -276,7 +287,19 @@ class SequenceGame {
         if (this.isHost) {
             inviteBox.style.display = 'block';
             inviteUrl.value = shareUrl;
-            inviteUrl.addEventListener('click', () => { inviteUrl.select(); });
+            inviteUrl.addEventListener('click', () => {
+                inviteUrl.select();
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    const label = document.querySelector('.invite-label');
+                    const originalText = label.innerText;
+                    label.innerText = '📋 Copied to clipboard!';
+                    label.style.color = 'var(--gold)';
+                    setTimeout(() => {
+                        label.innerText = originalText;
+                        label.style.color = '';
+                    }, 2000);
+                });
+            });
             teamCfg.style.display = 'block';
             this.updateTeamLabels(teamLabels);
             renderSetupState();
