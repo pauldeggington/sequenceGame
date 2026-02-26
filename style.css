@@ -482,6 +482,7 @@ header h1 {
     backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
     border-radius: 10px;
+    padding: 8px 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -1227,21 +1228,33 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-color);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
 }
 
 #emoji-menu {
     position: absolute;
-    bottom: 45px;
-    right: 0;
-    padding: 10px;
+    bottom: 55px;
+    /* Added some space above the button */
+    left: 0;
+    width: 100%;
+    /* Take up the same width as the button */
+    padding: 10px 0;
     border-radius: 12px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
 }
 
 .emoji-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 8px;
+    justify-items: center;
 }
 
 .emoji-opt {
