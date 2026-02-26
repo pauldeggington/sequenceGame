@@ -1753,9 +1753,14 @@ class SequenceGame {
 
     showWinPopup(winner) {
         const ui = this.ui;
-        if (ui.gameOverOverlay && ui.winnerDisplay) { // Note: winnerDisplay might be wrong ID based on view, let me check
+        if (ui.gameOverOverlay && ui.winnerDisplay) {
+            const teamColor = winner.toLowerCase();
+            const colorHex = teamColor === 'red' ? '#ff7675' : (teamColor === 'blue' ? '#74b9ff' : '#55efc4');
+
             ui.winnerDisplay.innerText = `${winner.toUpperCase()} TEAM WINS!`;
-            ui.winnerDisplay.style.color = winner === 'red' ? '#ff7675' : (winner === 'blue' ? '#74b9ff' : '#55efc4');
+            ui.winnerDisplay.style.color = colorHex;
+            ui.winnerDisplay.style.textShadow = `0 0 30px ${colorHex}99, 0 4px 20px rgba(0,0,0,0.5)`;
+
             ui.gameOverOverlay.style.display = 'flex';
         }
     }

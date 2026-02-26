@@ -210,10 +210,10 @@
 
     <!-- ══════════ GAME OVER POPUP ══════════ -->
     <div id="game-over-overlay" class="win-popup-overlay" style="display:none">
-        <div class="win-popup glass-panel">
-            <h2 id="winner-text">Red Team Wins!</h2>
-            <p>Congratulations!</p>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+        <div class="win-content">
+            <div id="winner-text" class="turn-overlay-text">Red Team Wins!</div>
+            <p id="win-subtitle">Congratulations!</p>
+            <div class="win-actions">
                 <button id="play-again-btn" class="premium-button">Play Again</button>
                 <button id="home-btn" class="premium-button secondary">Home</button>
             </div>
