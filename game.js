@@ -121,7 +121,6 @@ class SequenceGame {
             emojiMenu: document.getElementById('emoji-menu'),
             emojiFloatContainer: document.getElementById('emoji-float-container'),
             hintsToggle: document.getElementById('show-hints-toggle'),
-            deckCountIndicator: document.getElementById('deck-count-indicator'),
         };
         const ui = this.ui;
         const renderSetupState = () => {
@@ -1028,7 +1027,6 @@ class SequenceGame {
                 if (this.currentTurn === this.myColor && this.hintsEnabled) {
                     this.syncBoardState();
                 }
-                this.updateDeckCountIndicator(card);
             };
 
             cardEl.onpointerleave = () => {
@@ -1037,7 +1035,6 @@ class SequenceGame {
                     if (this.currentTurn === this.myColor && this.hintsEnabled) {
                         this.syncBoardState();
                     }
-                    if (ui.deckCountIndicator) ui.deckCountIndicator.style.visibility = 'visible';
                 }
             };
 
@@ -1045,50 +1042,6 @@ class SequenceGame {
         });
     }
 
-
-    updateDeckCountIndicator(card) {
-        const ui = this.ui;
-        if (!ui.deckCountIndicator) return;
-
-        const isOneEye = ONE_EYE.has(card);
-        const isTwoEye = TWO_EYE.has(card);
-
-        let openSlots = 0;
-        let infoText = "";
-
-        if (isOneEye) {
-            // One-eyed Jack: removable opponent chips
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
-                    const chip = this.chips[r][c];
-                    if (chip && chip !== this.myColor) openSlots++;
-                }
-            }
-            infoText = `🎯 ${openSlots} opponent chips removable`;
-        } else if (isTwoEye) {
-            // Two-eyed Jack: any empty non-free space
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
-                    if (this.board[r][c] !== 'FREE' && this.chips[r][c] === null) openSlots++;
-                }
-            }
-            infoText = `✨ WILD: ${openSlots} empty spaces available`;
-        } else {
-            // Normal card: matching empty slots
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
-                    if (this.board[r][c] === card && this.chips[r][c] === null) openSlots++;
-                }
-            }
-            const rank = card.slice(0, -1);
-            const suit = card.slice(-1);
-            const cardName = rank + SUITS[suit];
-            infoText = `📍 ${openSlots} open ${cardName} slot${openSlots === 1 ? '' : 's'} on board`;
-        }
-
-        ui.deckCountIndicator.innerText = infoText;
-        ui.deckCountIndicator.style.display = 'block';
-    }
 
     updateJackHint() {
         const ui = this.ui;
@@ -1402,7 +1355,7 @@ class SequenceGame {
         const suit = cardName.slice(-1);
         const displayName = rank + (SUITS[suit] || suit);
 
-        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} AI Bot ${type === 'place' ? 'placed on' : 'removed from'} ${displayName} [${r},${c}]`);
+        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} AI Bot ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
 
         this.currentTurn = 'red';
         this.renderBoard();
