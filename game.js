@@ -1093,6 +1093,10 @@ class SequenceGame {
             }
 
             const cardEl = document.createElement('div');
+            if (this.selectedCardIndex === index) {
+                this.selectedIsDead = isDead;
+            }
+
             cardEl.className = [
                 'card',
                 this.selectedCardIndex === index ? 'selected' : '',
@@ -1226,7 +1230,7 @@ class SequenceGame {
 
         // Dead card hints
         if (ui.deadHint) {
-            if (this.hasDeadCards && this.currentTurn === this.myColor) {
+            if (this.selectedIsDead && this.currentTurn === this.myColor) {
                 ui.deadHint.innerText = "💀 Dead Card: Click to exchange for a new one.";
                 ui.deadHint.style.display = 'block';
             } else {
