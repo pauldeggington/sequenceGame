@@ -64,6 +64,7 @@ class SequenceGame {
         this.hostConnection = null;
 
         this.isHost = false;
+        this.isSinglePlayer = false; // Add single player flag
         this.myColor = null;
         this.currentTurn = null;
         this.selectedCardIndex = null;
@@ -99,6 +100,7 @@ class SequenceGame {
             nameInput: document.getElementById('player-name'),
             createSec: document.getElementById('create-game-section'),
             createBtn: document.getElementById('create-game-btn'),
+            playSingleBtn: document.getElementById('play-single-btn'),
             board: document.getElementById('game-board'),
             hand: document.getElementById('player-hand'),
             turnIndicator: document.getElementById('turn-indicator'),
@@ -207,6 +209,22 @@ class SequenceGame {
             ui.status.innerText = "Creating room...";
             this.startSession(newId, true);
         });
+
+        if (ui.playSingleBtn) {
+            ui.playSingleBtn.addEventListener('click', () => {
+                this.isSinglePlayer = true;
+                this.teamCount = 2; // Human vs AI
+                this.myName = this.myName || "Player";
+                this.isHost = true; // Act as host for game logic
+
+                // Set up peers array manually (empty peer for the AI)
+                this.peers = ['AI_BOT'];
+                this.peerNames = { 'AI_BOT': 'AI Bot' };
+                this.playerIDMap = { 'AI_BOT': 'bot-1234' };
+
+                this.startGame();
+            });
+        }
 
         this.initEventListeners();
     }
@@ -641,6 +659,7 @@ class SequenceGame {
     }
 
     sendTo(peerId, type, data) {
+        if (this.isSinglePlayer) return;
         if (this.connections[peerId] && this.connections[peerId].open) {
             this.connections[peerId].send({ type, data });
         } else if (!this.isHost && this.hostConnection && this.hostConnection.open) {
@@ -649,6 +668,7 @@ class SequenceGame {
     }
 
     broadcast(type, data, excludePeerId = null) {
+        if (this.isSinglePlayer) return;
         if (this.isHost) {
             for (let pid of this.peers) {
                 if (pid !== excludePeerId) {
@@ -1108,8 +1128,11 @@ class SequenceGame {
         let moveType = null;
 
         if (ONE_EYE.has(card)) {
-            if (chip && chip !== this.myColor) {
+            if (chip && chip !== this.myColor && !this.isChipInSequence(r, c, chip)) {
                 moveType = 'remove';
+            } else if (chip && chip !== this.myColor) {
+                this.log("⚠ Cannot remove a chip from a completed sequence.");
+                return;
             } else {
                 this.log("⚠ One-eyed Jack: Click an opponent's chip.");
                 return;
@@ -1175,6 +1198,10 @@ class SequenceGame {
         this.updateTurnUI();
         this.updateJackHint();
         this.checkSequences();
+
+        if (this.isSinglePlayer && this.currentTurn && this.currentTurn !== this.myColor) {
+            setTimeout(() => this.playAITurn(), 1500);
+        }
     }
 
     applyOpponentMove(data, peerId) {
@@ -1279,6 +1306,207 @@ class SequenceGame {
             if (nr < 0 || nr >= 10 || nc < 0 || nc >= 10 || grid[nr][nc] !== color) return false;
         }
         return true;
+    }
+
+    // ══════════════════════════════════════
+    // AI LOGIC
+    // ══════════════════════════════════════
+    playAITurn() {
+        if (this.currentTurn !== 'blue') return; // AI is currently always 'blue'
+
+        const aiPlayerID = this.playerIDMap['AI_BOT'];
+        const aiState = this.playerStates[aiPlayerID];
+        const hand = aiState.hand;
+
+        let bestMove = null;
+        let bestScore = -Infinity;
+        let deadCardIndex = -1;
+
+        for (let i = 0; i < hand.length; i++) {
+            const card = hand[i];
+            const isOneEye = ONE_EYE.has(card);
+            const isTwoEye = TWO_EYE.has(card);
+
+            let possibleCells = [];
+
+            if (isOneEye) {
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        const chip = this.chips[r][c];
+                        if (chip && chip !== 'blue' && !this.isChipInSequence(r, c, chip)) {
+                            possibleCells.push({ r, c, type: 'remove' });
+                        }
+                    }
+                }
+            } else if (isTwoEye) {
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        if (this.board[r][c] !== 'FREE' && this.chips[r][c] === null) {
+                            possibleCells.push({ r, c, type: 'place' });
+                        }
+                    }
+                }
+            } else {
+                let dead = true;
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        if (this.board[r][c] === card && this.chips[r][c] === null) {
+                            possibleCells.push({ r, c, type: 'place' });
+                            dead = false;
+                        }
+                    }
+                }
+                if (dead) deadCardIndex = i;
+            }
+
+            for (const cell of possibleCells) {
+                const score = this.evaluateMove(cell.r, cell.c, cell.type, 'blue');
+                const jitter = Math.random() * 0.1;
+                const finalScore = score + jitter;
+
+                if (finalScore > bestScore) {
+                    bestScore = finalScore;
+                    bestMove = { r: cell.r, c: cell.c, cardIndex: i, type: cell.type, cardName: card };
+                }
+            }
+        }
+
+        if (!bestMove) {
+            if (deadCardIndex !== -1) {
+                const newCard = this.deck.length > 0 ? this.deck.shift() : null;
+                const deadCard = hand[deadCardIndex];
+                hand.splice(deadCardIndex, 1);
+                if (newCard) hand.push(newCard);
+
+                const rank = deadCard.slice(0, -1);
+                const suit = deadCard.slice(-1);
+                this.log(`♻️ AI exchanged dead card: ${rank + SUITS[suit]}`);
+                setTimeout(() => this.playAITurn(), 1500);
+            } else {
+                this.log("⚠ AI has no valid moves!");
+                this.currentTurn = 'red';
+                this.updateTurnUI();
+            }
+            return;
+        }
+
+        const { r, c, cardIndex, type, cardName } = bestMove;
+
+        this.chips[r][c] = type === 'place' ? 'blue' : null;
+
+        const drawnCard = this.deck.length > 0 ? this.deck.shift() : null;
+        hand.splice(cardIndex, 1);
+        if (drawnCard) hand.push(drawnCard);
+
+        const rank = cardName.slice(0, -1);
+        const suit = cardName.slice(-1);
+        const displayName = rank + (SUITS[suit] || suit);
+
+        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} AI Bot ${type === 'place' ? 'placed on' : 'removed from'} ${displayName} [${r},${c}]`);
+
+        this.currentTurn = 'red';
+        this.renderBoard();
+        this.updateTurnUI();
+        this.checkSequences();
+    }
+
+    evaluateMove(r, c, type, color) {
+        const opponent = color === 'blue' ? 'red' : 'blue';
+        const testChips = this.chips.map(row => [...row]);
+
+        const countsBefore = this.getLineStats(testChips, color);
+        const oppBefore = this.getLineStats(testChips, opponent);
+
+        testChips[r][c] = type === 'place' ? color : null;
+
+        const countsAfter = this.getLineStats(testChips, color);
+        const oppAfter = this.getLineStats(testChips, opponent);
+
+        let score = 0;
+
+        if (type === 'place') {
+            if (countsAfter.seqs > countsBefore.seqs) score += 10000;
+            else {
+                testChips[r][c] = opponent;
+                const oppIfPlayed = this.getLineStats(testChips, opponent);
+                if (oppIfPlayed.seqs > oppBefore.seqs) {
+                    score += 8000;
+                } else {
+                    score += (oppIfPlayed.max4 - oppBefore.max4) * 800;
+                    score += (oppIfPlayed.max3 - oppBefore.max3) * 50;
+                }
+
+                testChips[r][c] = color;
+                score += (countsAfter.max4 - countsBefore.max4) * 100;
+                score += (countsAfter.max3 - countsBefore.max3) * 10;
+                score += (countsAfter.max2 - countsBefore.max2) * 1;
+            }
+        } else if (type === 'remove') {
+            score += (oppBefore.max4 - oppAfter.max4) * 800;
+            score += (oppBefore.max3 - oppAfter.max3) * 150;
+            score += (oppBefore.max2 - oppAfter.max2) * 20;
+        }
+
+        const centerDist = Math.abs(r - 4.5) + Math.abs(c - 4.5);
+        score -= centerDist * 0.1;
+
+        return score;
+    }
+
+    getLineStats(chipsArray, color) {
+        const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        const grid = chipsArray.map((row, r) =>
+            row.map((cell, c) => this.board[r][c] === 'FREE' ? color : cell)
+        );
+        let seqs = 0, max4 = 0, max3 = 0, max2 = 0;
+
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                for (const [dr, dc] of directions) {
+                    let run = 0, gaps = 0;
+                    for (let i = 0; i < 5; i++) {
+                        const nr = r + i * dr, nc = c + i * dc;
+                        if (nr >= 0 && nr < 10 && nc >= 0 && nc < 10) {
+                            if (grid[nr][nc] === color) run++;
+                            else if (grid[nr][nc] !== null && this.board[nr][nc] !== 'FREE') gaps = 10;
+                        } else {
+                            gaps = 10;
+                        }
+                    }
+                    if (gaps < 10) {
+                        if (run === 5) seqs++;
+                        else if (run === 4) max4++;
+                        else if (run === 3) max3++;
+                        else if (run === 2) max2++;
+                    }
+                }
+            }
+        }
+        return { seqs, max4, max3, max2 };
+    }
+
+    isChipInSequence(r, c, color) {
+        const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        const grid = this.chips.map((row, rIdx) =>
+            row.map((cell, cIdx) => this.board[rIdx][cIdx] === 'FREE' ? color : cell)
+        );
+        for (const [dr, dc] of directions) {
+            for (let offset = 0; offset < 5; offset++) {
+                const sr = r - offset * dr;
+                const sc = c - offset * dc;
+                let isSeq = true;
+                for (let i = 0; i < 5; i++) {
+                    const nr = sr + i * dr;
+                    const nc = sc + i * dc;
+                    if (nr < 0 || nr >= 10 || nc < 0 || nc >= 10 || grid[nr][nc] !== color) {
+                        isSeq = false;
+                        break;
+                    }
+                }
+                if (isSeq) return true;
+            }
+        }
+        return false;
     }
 
     // ══════════════════════════════════════
