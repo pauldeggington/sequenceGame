@@ -8,40 +8,31 @@
 
 // Networking now uses PeerJS loaded via <script> tag in index.html
 
-// ── Constants & Configuration ──────────────────────────────────
-const CONFIG = {
-    BOARD: [
-        ["FREE", "2S", "3S", "4S", "5S", "10D", "QD", "KD", "AD", "FREE"],
-        ["6C", "5C", "4C", "3C", "2C", "4S", "5S", "6S", "7S", "AC"],
-        ["7C", "AS", "2D", "3D", "4D", "KC", "QC", "10C", "8C", "KC"],
-        ["8C", "KS", "6C", "5C", "4C", "9H", "8H", "9C", "9S", "QC"],
-        ["9C", "QS", "7C", "6H", "5H", "2H", "7H", "8C", "10S", "10C"],
-        ["AS", "7H", "9H", "AH", "4H", "3H", "KH", "10D", "6H", "2D"],
-        ["KS", "8H", "8D", "2C", "3C", "10H", "QH", "QD", "5H", "3D"],
-        ["QS", "9H", "7D", "6D", "5D", "AC", "AD", "KD", "4H", "4D"],
-        ["10S", "10H", "QH", "KH", "AH", "3S", "2S", "2H", "3H", "5D"],
-        ["FREE", "9S", "8S", "7S", "6S", "9D", "8D", "7D", "6D", "FREE"]
-    ],
-    SUITS: { H: '♥', D: '♦', S: '♠', C: '♣' },
-    SUIT_NAMES: { 'H': 'hearts', 'D': 'diamonds', 'S': 'spades', 'C': 'clubs' },
-    JACKS: {
-        ONE_EYE: new Set(['JH', 'JS']),
-        TWO_EYE: new Set(['JD', 'JC'])
-    },
-    TEAMS: ['red', 'blue', 'green'],
-    AI_THINK_TIME: 1000,
-    ANIMATION: {
-        FLOAT_DURATION: 20,
-        FLOAT_DELAY: 20,
-        LOG_SLIDE: 300
-    }
-};
+// ── Constants ─────────────────────────────────────────────────
+const BOARD_LAYOUT = [
+    ["FREE", "2S", "3S", "4S", "5S", "10D", "QD", "KD", "AD", "FREE"],
+    ["6C", "5C", "4C", "3C", "2C", "4S", "5S", "6S", "7S", "AC"],
+    ["7C", "AS", "2D", "3D", "4D", "KC", "QC", "10C", "8C", "KC"],
+    ["8C", "KS", "6C", "5C", "4C", "9H", "8H", "9C", "9S", "QC"],
+    ["9C", "QS", "7C", "6H", "5H", "2H", "7H", "8C", "10S", "10C"],
+    ["AS", "7H", "9H", "AH", "4H", "3H", "KH", "10D", "6H", "2D"],
+    ["KS", "8H", "8D", "2C", "3C", "10H", "QH", "QD", "5H", "3D"],
+    ["QS", "9H", "7D", "6D", "5D", "AC", "AD", "KD", "4H", "4D"],
+    ["10S", "10H", "QH", "KH", "AH", "3S", "2S", "2H", "3H", "5D"],
+    ["FREE", "9S", "8S", "7S", "6S", "9D", "8D", "7D", "6D", "FREE"]
+];
+
+const SUITS = { H: '♥', D: '♦', S: '♠', C: '♣' };
+const ONE_EYE = new Set(['JH', 'JS']);
+const TWO_EYE = new Set(['JD', 'JC']);
+const TEAM_COLORS = ['red', 'blue', 'green'];
 
 function getCardImagePath(card) {
     if (card === 'FREE') return 'card_images/back_light.png';
     const rank = card.slice(0, -1);
     const suit = card.slice(-1);
-    const suitName = CONFIG.SUIT_NAMES[suit];
+    const suitMap = { 'H': 'hearts', 'D': 'diamonds', 'S': 'spades', 'C': 'clubs' };
+    const suitName = suitMap[suit];
 
     // Special handling for Jacks based on Sequence logic
     if (rank === 'J') {
@@ -62,53 +53,45 @@ function genId(len = 8) {
 // ── Game Class ────────────────────────────────────────────────
 class SequenceGame {
     constructor() {
-        this.board = CONFIG.BOARD;
+        this.board = BOARD_LAYOUT;
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.deck = [];
         this.hand = [];
 
-        // State & Networking
+        // PeerJS variables
         this.peer = null;
         this.connections = {};
         this.hostConnection = null;
+
         this.isHost = false;
-        this.isSinglePlayer = false;
+        this.isSinglePlayer = false; // Add single player flag
         this.myColor = null;
         this.currentTurn = null;
         this.selectedCardIndex = null;
         this.sequences = { red: 0, blue: 0, green: 0 };
         this.jackMode = null;
         this.teamCount = 2;
-        this.winTarget = 2; // Default
-        this.peers = [];
-        this.peerNames = {};
-        this.myName = localStorage.getItem('sequence_playerName') || '';
-        this.playerID = this._initPlayerID();
-        this.playerIDMap = {};
-        this.playerStates = {};
-        this.lastMove = null;
+        this.peers = [];         // connected peer IDs
+        this.peerNames = {};     // peerId -> name
+        this.myName = '';
+        this.playerID = localStorage.getItem('sequence_playerID') || genId(12);
+        localStorage.setItem('sequence_playerID', this.playerID);
+
+        this.playerIDMap = {};   // peerId -> playerID
+        this.playerStates = {};  // playerID -> { color, hand, name, peerId }
+        this.lastMove = null;    // { r, c } coordinate of last placement
         this.aiTurnTimeout = null;
 
-        this.initUI();
         this.initSetup();
         this.initBackgroundCards();
-        this.initEventListeners();
-    }
-
-    _initPlayerID() {
-        let id = localStorage.getItem('sequence_playerID');
-        if (!id) {
-            id = genId(12);
-            localStorage.setItem('sequence_playerID', id);
-        }
-        return id;
     }
 
     initBackgroundCards() {
-        const bgContainer = this.ui.bgContainer;
+        const bgContainer = document.getElementById('bg-cards');
         if (!bgContainer) return;
 
-        const allCards = CONFIG.BOARD.flat().filter(c => c !== 'FREE');
+        // Flatten board layout to get unique cards (excluding FREE)
+        const allCards = BOARD_LAYOUT.flat().filter(c => c !== 'FREE');
         const cardCount = 15;
 
         for (let i = 0; i < cardCount; i++) {
@@ -120,7 +103,7 @@ class SequenceGame {
             bgContainer.appendChild(cardEl);
         }
 
-        const colors = CONFIG.TEAMS;
+        const colors = ['red', 'blue', 'green'];
         for (let i = 0; i < 12; i++) {
             const tokenEl = document.createElement('div');
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -133,7 +116,7 @@ class SequenceGame {
     setRandomFloatingStyles(el) {
         el.style.left = `${Math.random() * 95}%`;
         el.style.top = `${Math.random() * 95}%`;
-        el.style.setProperty('--duration', `${CONFIG.ANIMATION.FLOAT_DURATION + Math.random() * 25}s`);
+        el.style.setProperty('--duration', `${20 + Math.random() * 25}s`);
         el.style.setProperty('--delay', `${-Math.random() * 20}s`);
         el.style.setProperty('--rot', `${Math.random() * 360}deg`);
         el.style.setProperty('--x1', `${-100 + Math.random() * 200}px`);
@@ -142,7 +125,10 @@ class SequenceGame {
         el.style.setProperty('--y2', `${-100 + Math.random() * 200}px`);
     }
 
-    initUI() {
+    // ══════════════════════════════════════
+    // SETUP SCREEN
+    // ══════════════════════════════════════
+    initSetup() {
         this.ui = {
             status: document.getElementById('setup-status'),
             inviteBox: document.getElementById('invite-box'),
@@ -178,96 +164,119 @@ class SequenceGame {
             emojiFloatContainer: document.getElementById('emoji-float-container'),
             hintsToggle: document.getElementById('show-hints-toggle'),
             backBtn: document.getElementById('setup-back-btn'),
-            bgContainer: document.getElementById('bg-cards')
         };
-    }
+        const ui = this.ui;
+        const renderSetupState = () => {
+            if (!ui.playersEl) return;
+            ui.playersEl.innerHTML = '';
+            const myDisplay = this.myName || 'You';
+            const me = document.createElement('div');
+            me.className = 'player-entry me';
+            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
+            ui.playersEl.appendChild(me);
 
-    initSetup() {
-        const { ui } = this;
+            this.peers.forEach((pid, i) => {
+                const el = document.createElement('div');
+                el.className = 'player-entry';
+                let peerName = this.peerNames[pid];
+                if (!peerName) {
+                    if (pid === 'HOST') peerName = 'Host';
+                    else peerName = `Player ${i + 2}`;
+                }
+                el.innerText = `👤 ${peerName}`;
+                ui.playersEl.appendChild(el);
+            });
+        };
 
-        // Sync name from localStorage
-        if (ui.nameInput && this.myName) {
-            ui.nameInput.value = this.myName;
+        this.syncPlayers = () => {
+            if (this.isHost) {
+                this.broadcast('players_sync', {
+                    hostName: this.myName,
+                    peers: this.peers,
+                    peerNames: this.peerNames
+                });
+                renderSetupState();
+            }
+        };
+
+        // Name input
+        if (ui.nameInput) {
+            ui.nameInput.addEventListener('input', () => {
+                this.myName = ui.nameInput.value.trim();
+                localStorage.setItem('sequence_playerName', this.myName);
+                if (this.isHost) {
+                    this.syncPlayers();
+                } else {
+                    this.sendJoin();
+                }
+                renderSetupState();
+            });
+            const savedName = localStorage.getItem('sequence_playerName');
+            if (savedName) {
+                ui.nameInput.value = savedName;
+                this.myName = savedName;
+            }
         }
 
-        // Determine starting state
+        // ── Actions Setup ──
+        this.sendName = (name) => this.broadcast('name', name);
+        this.sendJoin = () => this.broadcast('join', { name: this.myName, playerID: this.playerID });
+        this.sendConfig = (config) => this.broadcast('config', config);
+        this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
+        this.sendMove = (data) => this.broadcast('move', data);
+        this.sendSync = (data) => this.broadcast('sync', data);
+        this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
+
+        // Determine room ID and start flow
         const hashId = window.location.hash.substring(1);
         const savedRoomId = localStorage.getItem('sequence_roomID');
-        const savedIsHost = localStorage.getItem('sequence_isHost') === 'true';
+        const savedIsHost = localStorage.getItem('sequence_isHost');
 
-        if (hashId) {
-            ui.status.innerText = hashId === savedRoomId && savedIsHost ? "Re-hosting room..." : "Joining room...";
-            this.startSession(hashId, hashId === savedRoomId && savedIsHost);
+        if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
+            ui.status.innerText = "Re-hosting room...";
+            this.startSession(hashId, true);
+        } else if (hashId) {
+            ui.status.innerText = "Joining room...";
+            this.startSession(hashId, false);
+        } else if (savedRoomId && savedIsHost === 'true') {
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Ready to start a game";
         } else {
             ui.createSec.style.display = 'block';
-            ui.status.innerText = savedRoomId && savedIsHost ? "Ready to start a new game" : "Welcome to Very Wild Jacks";
+            ui.status.innerText = "Welcome to Very Wild Jacks";
         }
 
-        // ── Data Sync Shortcuts ──
-        this.broadcastData = (type, data) => this.broadcast(type, data);
-        this.sendJoin = () => this.broadcastData('join', { name: this.myName, playerID: this.playerID });
-
-        // ── Setup Listeners ──
-        ui.createBtn?.addEventListener('click', () => {
+        ui.createBtn.addEventListener('click', () => {
             const newId = genId(8);
             ui.status.innerText = "Creating room...";
             this.startSession(newId, true);
         });
 
-        ui.playSingleBtn?.addEventListener('click', () => {
-            this.isSinglePlayer = true;
-            this.teamCount = 2;
-            this.myName = this.myName || "Player";
-            this.isHost = true;
-            this.peers = [];
-            this.peerNames = {};
-            this.playerIDMap = {};
+        if (ui.playSingleBtn) {
+            ui.playSingleBtn.addEventListener('click', () => {
+                this.isSinglePlayer = true;
+                this.teamCount = 2; // Human vs AI
+                this.myName = this.myName || "Player";
+                this.isHost = true; // Act as host for game logic
 
-            ui.createSec.style.display = 'none';
-            ui.teamCfg.style.display = 'block';
-            ui.teamCfg.classList.add('single-player-setup');
-            ui.startBtn.style.display = 'block';
-            ui.backBtn.style.display = 'block';
-            this.updateTeamLabels(ui.teamLabels);
-        });
+                // Set up peers array manually (empty peer for the AI)
+                this.peers = [];
+                this.peerNames = {};
+                this.playerIDMap = {};
 
-        ui.nameInput?.addEventListener('input', () => {
-            this.myName = ui.nameInput.value.trim();
-            localStorage.setItem('sequence_playerName', this.myName);
-            this.isHost ? this.syncPlayers() : this.sendJoin();
-            this.renderSetupState();
-        });
-    }
+                // Show options instead of starting
+                ui.createSec.style.display = 'none';
+                ui.teamCfg.style.display = 'block';
+                ui.teamCfg.classList.add('single-player-setup');
+                ui.startBtn.style.display = 'block';
+                ui.backBtn.style.display = 'block';
 
-    renderSetupState() {
-        const { playersEl } = this.ui;
-        if (!playersEl) return;
+                // Allow team selection for 1v1 or 1v1v1
+                this.updateTeamLabels(ui.teamLabels);
+            });
+        }
 
-        playersEl.innerHTML = '';
-        const entries = [
-            { name: `${this.myName || 'You'}${this.isHost ? ' (Host)' : ''}`, isMe: true },
-            ...this.peers.map((pid, i) => ({
-                name: this.peerNames[pid] || (pid === 'HOST' ? 'Host' : `Player ${i + 2}`),
-                isMe: false
-            }))
-        ];
-
-        entries.forEach(entry => {
-            const el = document.createElement('div');
-            el.className = `player-entry ${entry.isMe ? 'me' : ''}`;
-            el.innerText = `👤 ${entry.name}`;
-            playersEl.appendChild(el);
-        });
-    }
-
-    syncPlayers() {
-        if (!this.isHost) return;
-        this.broadcast('players_sync', {
-            hostName: this.myName,
-            peers: this.peers,
-            peerNames: this.peerNames
-        });
-        this.renderSetupState();
+        this.initEventListeners();
     }
 
     initEventListeners() {
@@ -767,7 +776,7 @@ class SequenceGame {
     }
 
     updateTeamLabels(container) {
-        const labels = CONFIG.TEAMS.slice(0, this.teamCount);
+        const labels = TEAM_COLORS.slice(0, this.teamCount);
         const emojis = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
         container.innerHTML = labels.map(c =>
             `<span class="team-tag ${c}">${emojis[c]}</span>`
@@ -973,7 +982,7 @@ class SequenceGame {
 
                     const suitEl = document.createElement('div');
                     suitEl.className = 'simple-suit';
-                    suitEl.innerText = CONFIG.SUITS[suit];
+                    suitEl.innerText = SUITS[suit];
 
                     simpleCard.appendChild(rankEl);
                     simpleCard.appendChild(suitEl);
@@ -1040,8 +1049,8 @@ class SequenceGame {
         if (!ui.hand) return;
         ui.hand.innerHTML = '';
         this.hand.forEach((card, index) => {
-            const isOneEye = CONFIG.JACKS.ONE_EYE.has(card);
-            const isTwoEye = CONFIG.JACKS.TWO_EYE.has(card);
+            const isOneEye = ONE_EYE.has(card);
+            const isTwoEye = TWO_EYE.has(card);
 
             const cardEl = document.createElement('div');
             cardEl.className = [
@@ -1093,7 +1102,7 @@ class SequenceGame {
 
                         const rank = card.slice(0, -1);
                         const suit = card.slice(-1);
-                        const cardName = rank + CONFIG.SUITS[suit];
+                        const cardName = rank + SUITS[suit];
 
                         this.log(`♻️ Exchanged dead card: ${cardName}`);
 
@@ -1183,7 +1192,7 @@ class SequenceGame {
 
         let moveType = null;
 
-        if (CONFIG.JACKS.ONE_EYE.has(card)) {
+        if (ONE_EYE.has(card)) {
             if (chip && chip !== this.myColor && !this.isChipInSequence(r, c, chip)) {
                 moveType = 'remove';
             } else if (chip && chip !== this.myColor) {
@@ -1193,7 +1202,7 @@ class SequenceGame {
                 this.log("⚠ One-eyed Jack: Click an opponent's chip.");
                 return;
             }
-        } else if (CONFIG.JACKS.TWO_EYE.has(card)) {
+        } else if (TWO_EYE.has(card)) {
             if (!chip && !isFree) {
                 moveType = 'place';
             } else {
@@ -1234,7 +1243,7 @@ class SequenceGame {
         // Card name for log
         const cellRank = cellVal.slice(0, -1);
         const cellSuit = cellVal.slice(-1);
-        const cardName = cellRank + CONFIG.SUITS[cellSuit];
+        const cardName = cellRank + SUITS[cellSuit];
         const myName = (this.colorNames && this.colorNames[this.myColor]) || this.myColor;
         this.log(`${moveType === 'place' ? '✅' : '❌'} ${myName} ${moveType === 'place' ? 'placed on' : 'removed from'} ${cardName}`);
 
@@ -1391,101 +1400,98 @@ class SequenceGame {
             this.aiTurnTimeout = null;
         }
 
-        const colors = CONFIG.TEAMS.slice(0, this.teamCount);
+        const colors = TEAM_COLORS.slice(0, this.teamCount);
         const myColor = this.currentTurn;
         const playerState = Object.values(this.playerStates).find(s => s.color === myColor);
-        if (!playerState?.peerId?.startsWith('COMPUTER_')) return;
+        if (!playerState || !playerState.peerId || !playerState.peerId.startsWith('COMPUTER_')) return;
 
-        const name = this.colorNames?.[myColor] || 'Computer';
+        const name = (this.colorNames && this.colorNames[myColor]) || 'Computer';
         this.log(`🤔 ${name} is thinking...`);
 
-        const { bestMove, deadCardIndex } = this.findBestMove(playerState.hand, myColor);
+        const hand = playerState.hand;
 
-        if (!bestMove) {
-            if (deadCardIndex !== -1) {
-                this.handleAIDeadCard(playerState.hand, deadCardIndex, name);
-            } else {
-                this.passAITurn(name, colors);
-            }
-            return;
-        }
-
-        this.executeAIMove(bestMove, playerState.hand, myColor, colors);
-    }
-
-    findBestMove(hand, myColor) {
         let bestMove = null;
         let bestScore = -Infinity;
         let deadCardIndex = -1;
 
-        hand.forEach((card, i) => {
-            const isOneEye = CONFIG.JACKS.ONE_EYE.has(card);
-            const isTwoEye = CONFIG.JACKS.TWO_EYE.has(card);
-            let options = [];
+        for (let i = 0; i < hand.length; i++) {
+            const card = hand[i];
+            const isOneEye = ONE_EYE.has(card);
+            const isTwoEye = TWO_EYE.has(card);
+
+            let possibleCells = [];
 
             if (isOneEye) {
-                options = this.getOneEyeOptions(myColor);
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        const chip = this.chips[r][c];
+                        if (chip && chip !== myColor && !this.isChipInSequence(r, c, chip)) {
+                            possibleCells.push({ r, c, type: 'remove' });
+                        }
+                    }
+                }
             } else if (isTwoEye) {
-                options = this.getTwoEyeOptions();
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        if (this.board[r][c] !== 'FREE' && this.chips[r][c] === null) {
+                            possibleCells.push({ r, c, type: 'place' });
+                        }
+                    }
+                }
             } else {
-                options = this.getStandardOptions(card);
-                if (options.length === 0) deadCardIndex = i;
+                let dead = true;
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        if (this.board[r][c] === card && this.chips[r][c] === null) {
+                            possibleCells.push({ r, c, type: 'place' });
+                            dead = false;
+                        }
+                    }
+                }
+                if (dead) deadCardIndex = i;
             }
 
-            options.forEach(cell => {
+            for (const cell of possibleCells) {
                 const score = this.evaluateMove(cell.r, cell.c, cell.type, myColor);
-                const finalScore = score + Math.random() * 0.1;
+                const jitter = Math.random() * 0.1;
+                const finalScore = score + jitter;
+
                 if (finalScore > bestScore) {
                     bestScore = finalScore;
-                    bestMove = { ...cell, cardIndex: i, cardName: card };
-                }
-            });
-        });
-
-        return { bestMove, deadCardIndex };
-    }
-
-    getOneEyeOptions(myColor) {
-        const options = [];
-        for (let r = 0; r < 10; r++) {
-            for (let c = 0; c < 10; c++) {
-                const chip = this.chips[r][c];
-                if (chip && chip !== myColor && !this.isChipInSequence(r, c, chip)) {
-                    options.push({ r, c, type: 'remove' });
+                    bestMove = { r: cell.r, c: cell.c, cardIndex: i, type: cell.type, cardName: card };
                 }
             }
         }
-        return options;
-    }
 
-    getTwoEyeOptions() {
-        const options = [];
-        for (let r = 0; r < 10; r++) {
-            for (let c = 0; c < 10; c++) {
-                if (CONFIG.BOARD[r][c] !== 'FREE' && this.chips[r][c] === null) {
-                    options.push({ r, c, type: 'place' });
-                }
+        if (!bestMove) {
+            if (deadCardIndex !== -1) {
+                const newCard = this.deck.length > 0 ? this.deck.shift() : null;
+                const deadCard = hand[deadCardIndex];
+                hand.splice(deadCardIndex, 1);
+                if (newCard) hand.push(newCard);
+
+                const rank = deadCard.slice(0, -1);
+                const suit = deadCard.slice(-1);
+                this.log(`♻️ ${name} exchanged dead card: ${rank + SUITS[suit]}`);
+                this.checkAndTriggerAITurn();
+            } else {
+                this.log(`⚠ ${name} has no valid moves!`);
+                const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
+                this.currentTurn = colors[nextIdx];
+                this.updateTurnUI();
+                this.checkAndTriggerAITurn();
             }
+            return;
         }
-        return options;
-    }
 
-    getStandardOptions(card) {
-        const options = [];
-        for (let r = 0; r < 10; r++) {
-            for (let c = 0; c < 10; c++) {
-                if (CONFIG.BOARD[r][c] === card && this.chips[r][c] === null) {
-                    options.push({ r, c, type: 'place' });
-                }
-            }
-        }
-        return options;
-    }
+        const { r, c, cardIndex, type, cardName } = bestMove;
 
-    executeAIMove(move, hand, myColor, colors) {
-        const { r, c, cardIndex, type, cardName } = move;
         this.chips[r][c] = type === 'place' ? myColor : null;
-        this.lastMove = type === 'place' ? { r, c } : null;
+        if (type === 'place') {
+            this.lastMove = { r, c };
+        } else {
+            this.lastMove = null;
+        }
 
         const drawnCard = this.deck.length > 0 ? this.deck.shift() : null;
         hand.splice(cardIndex, 1);
@@ -1493,36 +1499,16 @@ class SequenceGame {
 
         const rank = cardName.slice(0, -1);
         const suit = cardName.slice(-1);
-        const displayName = rank + (CONFIG.SUITS[suit] || suit);
+        const displayName = rank + (SUITS[suit] || suit);
 
         this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} Computer ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
 
-        this.finalizeAITurn(colors);
-    }
-
-    handleAIDeadCard(hand, index, name) {
-        const deadCard = hand[index];
-        const newCard = this.deck.length > 0 ? this.deck.shift() : null;
-        hand.splice(index, 1);
-        if (newCard) hand.push(newCard);
-
-        const rank = deadCard.slice(0, -1);
-        const suit = deadCard.slice(-1);
-        this.log(`♻️ ${name} exchanged dead card: ${rank + (CONFIG.SUITS[suit] || suit)}`);
-        this.checkAndTriggerAITurn();
-    }
-
-    passAITurn(name, colors) {
-        this.log(`⚠ ${name} has no valid moves!`);
-        this.finalizeAITurn(colors);
-    }
-
-    finalizeAITurn(colors) {
-        const nextIdx = (colors.indexOf(this.currentTurn) + 1) % colors.length;
+        const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
         this.currentTurn = colors[nextIdx];
         this.renderBoard();
         this.updateTurnUI();
         this.checkSequences();
+
         this.checkAndTriggerAITurn();
     }
 
