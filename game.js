@@ -574,7 +574,9 @@ class SequenceGame {
         } else if (type === 'gameStart') {
             this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
             this.sequences = { red: 0, blue: 0, green: 0 };
+            this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
             this.lastMove = data.lastMove || null;
+            if (this.ui && this.ui.seqLines) this.ui.seqLines.innerHTML = '';
             document.getElementById('game-over-overlay').style.display = 'none';
             document.getElementById('play-again-waiting').style.display = 'none';
 
@@ -858,7 +860,9 @@ class SequenceGame {
 
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.sequences = { red: 0, blue: 0, green: 0 };
+        this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
         this.lastMove = null;
+        if (this.ui && this.ui.seqLines) this.ui.seqLines.innerHTML = '';
 
         // Host setup
         const hostState = this.playerStates[this.playerID];
