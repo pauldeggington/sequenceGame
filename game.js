@@ -222,7 +222,13 @@ class SequenceGame {
                 this.peerNames = { 'AI_BOT': 'AI Bot' };
                 this.playerIDMap = { 'AI_BOT': 'bot-1234' };
 
-                this.startGame();
+                // Show options instead of starting
+                ui.createSec.style.display = 'none';
+                ui.teamCfg.style.display = 'block';
+                ui.teamCfg.classList.add('single-player-setup');
+                ui.startBtn.style.display = 'block';
+
+                this.updateTeamLabels(ui.teamLabels);
             });
         }
 

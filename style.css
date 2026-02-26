@@ -251,6 +251,12 @@ body {
     color: #55efc4;
 }
 
+/* Hide teams selection in single player mode */
+.single-player-setup h3:nth-of-type(2),
+.single-player-setup .team-buttons {
+    display: none !important;
+}
+
 /* Player list */
 #players-connected {
     display: flex;
