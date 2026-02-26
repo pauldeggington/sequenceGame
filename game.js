@@ -82,9 +82,14 @@ class SequenceGame {
         this.lastMove = null;    // { r, c } coordinate of last placement
         this.aiTurnTimeout = null;
         this.exchangedThisTurn = false;
+        this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
 
         this.initSetup();
         this.initBackgroundCards();
+
+        window.addEventListener('resize', () => {
+            if (this.started) this.checkSequences();
+        });
     }
 
     initBackgroundCards() {
@@ -414,6 +419,7 @@ class SequenceGame {
                     this.hintsEnabled = s.hintsEnabled;
                     this.started = s.started;
                     this.lastMove = s.lastMove || null;
+                    this.sequenceGrid = s.sequenceGrid || Array(10).fill(null).map(() => Array(10).fill(false));
 
                     const myState = this.playerStates[this.playerID];
                     if (myState) {
@@ -527,6 +533,7 @@ class SequenceGame {
                         hintsEnabled: this.hintsEnabled,
                         boardChips: this.chips,
                         sequences: this.sequences,
+                        sequenceGrid: this.sequenceGrid,
                         lastMove: this.lastMove
                     });
                     this.log(`♻️ ${name} reconnected.`);
@@ -584,6 +591,7 @@ class SequenceGame {
             if (data.boardChips) {
                 this.chips = data.boardChips;
                 this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
+                this.sequenceGrid = data.sequenceGrid || Array(10).fill(null).map(() => Array(10).fill(false));
                 this.lastMove = data.lastMove || null;
                 this.renderBoard();
                 this.updateScoreUI();
@@ -603,6 +611,7 @@ class SequenceGame {
             }
         } else if (type === 'sync') {
             this.sequences = data.sequences;
+            if (data.sequenceGrid) this.sequenceGrid = data.sequenceGrid;
             this.updateScoreUI();
             this.renderBoard();
             if (data.winner) {
@@ -1040,7 +1049,8 @@ class SequenceGame {
                         cell.appendChild(chipEl);
                     }
                     const isLastMove = this.lastMove && this.lastMove.r === r && this.lastMove.c === c;
-                    const chipClass = `chip ${chip}${isLastMove ? ' last-move' : ''}`;
+                    const isLocked = this.sequenceGrid && this.sequenceGrid[r][c];
+                    const chipClass = `chip ${chip}${isLastMove ? ' last-move' : ''}${isLocked ? ' locked' : ''}`;
                     if (chipEl.className !== chipClass) chipEl.className = chipClass;
                 } else if (chipEl) {
                     chipEl.remove();
@@ -1333,38 +1343,58 @@ class SequenceGame {
     // SEQUENCE DETECTION
     // ══════════════════════════════════════
     checkSequences() {
-        if (this.ui.seqLines) this.ui.seqLines.innerHTML = '';
         let updated = false;
         const colors = TEAM_COLORS.slice(0, this.teamCount);
 
-        // Small delay to ensure browser has rendered chip elements for coordinate calculation
+        // Reset and recalculate grid IMMEDIATELY to prevent race conditions with One-Eyed Jacks
+        this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
+        const allSequences = {};
+
+        for (const color of colors) {
+            const result = this.countSequencesForColor(color);
+            allSequences[color] = result.sequences;
+
+            result.sequences.forEach(seq => {
+                seq.forEach(cell => {
+                    this.sequenceGrid[cell.r][cell.c] = true;
+                });
+            });
+
+            if (result.count > (this.sequences[color] || 0)) {
+                this.sequences[color] = result.count;
+                this.log(`🎉 ${color} formed sequence #${result.count}!`);
+                this.showSequencePopup(color);
+                updated = true;
+            }
+        }
+
+        this.updateScoreUI();
+
+        const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
+        const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
+
+        if (winner) {
+            this.currentTurn = null;
+            this.log(`🏆 ${winner} wins!`);
+            this.showWinPopup(winner);
+        }
+
+        if (updated && this.sendSync) {
+            this.sendSync({ sequences: this.sequences, winner, sequenceGrid: this.sequenceGrid });
+            if (this.isHost) this.saveGameState();
+        }
+
+        // Delayed UI line drawing only
         setTimeout(() => {
-            for (const color of colors) {
-                const count = this.countSequencesForColor(color);
-                if (count > (this.sequences[color] || 0)) {
-                    this.sequences[color] = count;
-                    this.log(`🎉 ${color} formed sequence #${count}!`);
-                    this.showSequencePopup(color);
-                    updated = true;
+            if (this.ui.seqLines) {
+                this.ui.seqLines.innerHTML = '';
+                for (const color of colors) {
+                    if (allSequences[color]) {
+                        allSequences[color].forEach(seq => this.drawSequenceLine(seq, color));
+                    }
                 }
             }
-
-            this.updateScoreUI();
-
-            const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
-            const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
-
-            if (winner) {
-                this.currentTurn = null;
-                this.log(`🏆 ${winner} wins!`);
-                this.showWinPopup(winner);
-            }
-
-            if (updated && this.sendSync) {
-                this.sendSync({ sequences: this.sequences, winner });
-                if (this.isHost) this.saveGameState();
-            }
-        }, 100);
+        }, 150);
     }
 
     saveGameState() {
@@ -1380,13 +1410,14 @@ class SequenceGame {
             winTarget: this.winTarget,
             hintsEnabled: this.hintsEnabled,
             started: this.started,
-            lastMove: this.lastMove
+            lastMove: this.lastMove,
+            sequenceGrid: this.sequenceGrid
         };
         localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(state));
     }
 
     countSequencesForColor(color) {
-        if (!this.ui.seqLines) return 0;
+        if (!this.ui.seqLines) return { count: 0, sequences: [] };
 
         const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
         const grid = this.chips.map((row, r) =>
@@ -1395,14 +1426,6 @@ class SequenceGame {
 
         let foundSequences = []; // Array of [{r, c}, ...]
         let usedInSequence = Array(10).fill(null).map(() => Array(10).fill(false));
-
-        // Detection helper
-        const isPartiallyUsed = (r, c, dr, dc) => {
-            for (let i = 0; i < 5; i++) {
-                if (usedInSequence[r + i * dr][c + i * dc]) return true;
-            }
-            return false;
-        };
 
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
@@ -1419,14 +1442,15 @@ class SequenceGame {
                     }
 
                     if (possible) {
-                        // Crucial check: Is this just an extension of an existing line? 
-                        // Sequence rules: You can share ONE chip between two sequences.
-                        // However, a straight line of 6 chips is NOT 2 sequences. 
-                        // We check if this 5-block is already fully or mostly used.
                         let usedCount = 0;
-                        cells.forEach(cell => { if (usedInSequence[cell.r][cell.c]) usedCount++; });
+                        cells.forEach(cell => {
+                            // Corners (FREE) don't count towards the shared chip limit
+                            if (this.board[cell.r][cell.c] !== 'FREE' && usedInSequence[cell.r][cell.c]) {
+                                usedCount++;
+                            }
+                        });
 
-                        if (usedCount <= 1) { // Standard Sequence rule: max 1 shared chip
+                        if (usedCount <= 1) { // Standard Sequence rule: max 1 shared non-corner chip
                             foundSequences.push(cells);
                             cells.forEach(cell => usedInSequence[cell.r][cell.c] = true);
                         }
@@ -1435,8 +1459,7 @@ class SequenceGame {
             }
         }
 
-        foundSequences.forEach(seq => this.drawSequenceLine(seq, color));
-        return foundSequences.length;
+        return { count: foundSequences.length, sequences: foundSequences };
     }
 
     drawSequenceLine(cells, color) {
@@ -1448,17 +1471,20 @@ class SequenceGame {
 
         if (!startCell || !endCell) return;
 
-        // Coordinates relative to the parent board container
-        const x1 = startCell.offsetLeft + (startCell.offsetWidth / 2);
-        const y1 = startCell.offsetTop + (startCell.offsetHeight / 2);
-        const x2 = endCell.offsetLeft + (endCell.offsetWidth / 2);
-        const y2 = endCell.offsetTop + (endCell.offsetHeight / 2);
+        // Calculate positions in percentage to make them truly responsive
+        const boardWidth = ui.board.offsetWidth;
+        const boardHeight = ui.board.offsetHeight;
+
+        const x1 = ((startCell.offsetLeft + (startCell.offsetWidth / 2)) / boardWidth) * 100;
+        const y1 = ((startCell.offsetTop + (startCell.offsetHeight / 2)) / boardHeight) * 100;
+        const x2 = ((endCell.offsetLeft + (endCell.offsetWidth / 2)) / boardWidth) * 100;
+        const y2 = ((endCell.offsetTop + (endCell.offsetHeight / 2)) / boardHeight) * 100;
 
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", x1);
-        line.setAttribute("y1", y1);
-        line.setAttribute("x2", x2);
-        line.setAttribute("y2", y2);
+        line.setAttribute("x1", `${x1}%`);
+        line.setAttribute("y1", `${y1}%`);
+        line.setAttribute("x2", `${x2}%`);
+        line.setAttribute("y2", `${y2}%`);
         line.setAttribute("class", `sequence-line ${color}`);
         ui.seqLines.appendChild(line);
     }
@@ -1685,27 +1711,7 @@ class SequenceGame {
     }
 
     isChipInSequence(r, c, color) {
-        const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
-        const grid = this.chips.map((row, rIdx) =>
-            row.map((cell, cIdx) => this.board[rIdx][cIdx] === 'FREE' ? color : cell)
-        );
-        for (const [dr, dc] of directions) {
-            for (let offset = 0; offset < 5; offset++) {
-                const sr = r - offset * dr;
-                const sc = c - offset * dc;
-                let isSeq = true;
-                for (let i = 0; i < 5; i++) {
-                    const nr = sr + i * dr;
-                    const nc = sc + i * dc;
-                    if (nr < 0 || nr >= 10 || nc < 0 || nc >= 10 || grid[nr][nc] !== color) {
-                        isSeq = false;
-                        break;
-                    }
-                }
-                if (isSeq) return true;
-            }
-        }
-        return false;
+        return this.sequenceGrid[r][c] === true;
     }
 
     // ══════════════════════════════════════
