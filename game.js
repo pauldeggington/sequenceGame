@@ -112,6 +112,7 @@ class SequenceGame {
             winnerDisplay: document.getElementById('winner-text'),
             playAgainWaiting: document.getElementById('play-again-waiting'),
             playAgainBtn: document.getElementById('play-again-btn'),
+            homeBtn: document.getElementById('home-btn'),
             turnOverlay: document.getElementById('turn-overlay'),
             emojiTrigger: document.getElementById('emoji-trigger'),
             emojiMenu: document.getElementById('emoji-menu'),
@@ -238,6 +239,13 @@ class SequenceGame {
                     if (ui.playAgainWaiting) ui.playAgainWaiting.style.display = 'block';
                     ui.playAgainBtn.style.display = 'none';
                 }
+            };
+        }
+
+        // Home button
+        if (ui.homeBtn) {
+            ui.homeBtn.onclick = () => {
+                window.location.href = window.location.origin + window.location.pathname;
             };
         }
 

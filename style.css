@@ -870,6 +870,18 @@ header h1 {
     box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
 }
 
+.premium-button.secondary {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    box-shadow: none;
+}
+
+.premium-button.secondary:hover {
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
 /* ══════════════════════════════════════════
    MOBILE RESPONSIVE
    ══════════════════════════════════════════ */
