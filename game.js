@@ -81,6 +81,7 @@ class SequenceGame {
         this.playerStates = {};  // playerID -> { color, hand, name, peerId }
         this.lastMove = null;    // { r, c } coordinate of last placement
         this.aiTurnTimeout = null;
+        this.exchangedThisTurn = false;
 
         this.initSetup();
         this.initBackgroundCards();
@@ -164,6 +165,7 @@ class SequenceGame {
             emojiFloatContainer: document.getElementById('emoji-float-container'),
             hintsToggle: document.getElementById('show-hints-toggle'),
             backBtn: document.getElementById('setup-back-btn'),
+            seqLines: document.getElementById('sequence-lines'),
         };
         const ui = this.ui;
         const renderSetupState = () => {
@@ -195,8 +197,8 @@ class SequenceGame {
                     peers: this.peers,
                     peerNames: this.peerNames
                 });
-                renderSetupState();
             }
+            renderSetupState();
         };
 
         // Name input
@@ -606,6 +608,9 @@ class SequenceGame {
             if (data.winner) {
                 this.currentTurn = null;
                 this.showWinPopup(data.winner);
+            }
+            if (this.isHost) {
+                this.broadcast('sync', data, peerId);
             }
         } else if (type === 'emoji') {
             this.showEmojiFloat(data);
@@ -1096,6 +1101,11 @@ class SequenceGame {
                     }
 
                     if (dead) {
+                        if (this.exchangedThisTurn) {
+                            this.log("⚠ Already exchanged a dead card this turn.");
+                            return;
+                        }
+
                         const newCard = this.deck.length > 0 ? this.deck.shift() : null;
                         this.hand.splice(index, 1);
                         if (newCard) this.hand.push(newCard);
@@ -1105,6 +1115,7 @@ class SequenceGame {
                         const cardName = rank + SUITS[suit];
 
                         this.log(`♻️ Exchanged dead card: ${cardName}`);
+                        this.exchangedThisTurn = true;
 
                         if (this.sendMove) {
                             this.sendMove({
@@ -1322,12 +1333,13 @@ class SequenceGame {
     // SEQUENCE DETECTION
     // ══════════════════════════════════════
     checkSequences() {
+        if (this.ui.seqLines) this.ui.seqLines.innerHTML = '';
         let updated = false;
         const colors = TEAM_COLORS.slice(0, this.teamCount);
 
         for (const color of colors) {
             const count = this.countSequencesForColor(color);
-            if (count > this.sequences[color]) {
+            if (count > (this.sequences[color] || 0)) {
                 this.sequences[color] = count;
                 this.log(`🎉 ${color} formed sequence #${count}!`);
                 this.showSequencePopup(color);
@@ -1371,24 +1383,82 @@ class SequenceGame {
     }
 
     countSequencesForColor(color) {
+        if (!this.ui.seqLines) return 0;
+
         const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
         const grid = this.chips.map((row, r) =>
             row.map((cell, c) => this.board[r][c] === 'FREE' ? color : cell)
         );
-        let count = 0;
-        for (let r = 0; r < 10; r++)
-            for (let c = 0; c < 10; c++)
-                for (const [dr, dc] of directions)
-                    if (this.checkLine(grid, r, c, dr, dc, color)) count++;
-        return count;
+
+        let foundSequences = []; // Array of [{r, c}, ...]
+        let usedInSequence = Array(10).fill(null).map(() => Array(10).fill(false));
+
+        // Detection helper
+        const isPartiallyUsed = (r, c, dr, dc) => {
+            for (let i = 0; i < 5; i++) {
+                if (usedInSequence[r + i * dr][c + i * dc]) return true;
+            }
+            return false;
+        };
+
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                for (const [dr, dc] of directions) {
+                    let cells = [];
+                    let possible = true;
+                    for (let i = 0; i < 5; i++) {
+                        const nr = r + i * dr, nc = c + i * dc;
+                        if (nr < 0 || nr >= 10 || nc < 0 || nc >= 10 || grid[nr][nc] !== color) {
+                            possible = false;
+                            break;
+                        }
+                        cells.push({ r: nr, c: nc });
+                    }
+
+                    if (possible) {
+                        // Crucial check: Is this just an extension of an existing line? 
+                        // Sequence rules: You can share ONE chip between two sequences.
+                        // However, a straight line of 6 chips is NOT 2 sequences. 
+                        // We check if this 5-block is already fully or mostly used.
+                        let usedCount = 0;
+                        cells.forEach(cell => { if (usedInSequence[cell.r][cell.c]) usedCount++; });
+
+                        if (usedCount <= 1) { // Standard Sequence rule: max 1 shared chip
+                            foundSequences.push(cells);
+                            cells.forEach(cell => usedInSequence[cell.r][cell.c] = true);
+                        }
+                    }
+                }
+            }
+        }
+
+        foundSequences.forEach(seq => this.drawSequenceLine(seq, color));
+        return foundSequences.length;
     }
 
-    checkLine(grid, r, c, dr, dc, color) {
-        for (let i = 0; i < 5; i++) {
-            const nr = r + i * dr, nc = c + i * dc;
-            if (nr < 0 || nr >= 10 || nc < 0 || nc >= 10 || grid[nr][nc] !== color) return false;
-        }
-        return true;
+    drawSequenceLine(cells, color) {
+        const ui = this.ui;
+        if (!ui.board || !ui.seqLines) return;
+
+        const boardRect = ui.board.getBoundingClientRect();
+        const startCell = ui.board.children[cells[0].r * 10 + cells[0].c];
+        const endCell = ui.board.children[cells[4].r * 10 + cells[4].c];
+
+        const r1 = startCell.getBoundingClientRect();
+        const r2 = endCell.getBoundingClientRect();
+
+        const x1 = (r1.left + r1.width / 2) - boardRect.left;
+        const y1 = (r1.top + r1.height / 2) - boardRect.top;
+        const x2 = (r2.left + r2.width / 2) - boardRect.left;
+        const y2 = (r2.top + r2.height / 2) - boardRect.top;
+
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y1);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y2);
+        line.setAttribute("class", `sequence-line ${color}`);
+        ui.seqLines.appendChild(line);
     }
 
     // ══════════════════════════════════════
@@ -1644,6 +1714,9 @@ class SequenceGame {
         if (!ui.turnIndicator || !this.currentTurn) return;
         const mine = this.currentTurn === this.myColor;
         if (mine) {
+            if (ui.turnIndicator.innerText !== "Your Turn!") {
+                this.exchangedThisTurn = false; // Reset on turn start
+            }
             ui.turnIndicator.innerText = "Your Turn!";
             this.showTurnOverlay();
             if (navigator.vibrate) navigator.vibrate(200);

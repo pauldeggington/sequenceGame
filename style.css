@@ -1325,3 +1325,43 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     animation: card-deal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     opacity: 0;
 }
+
+/* ── Sequence Lines ── */
+.sequence-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.sequence-line {
+    fill: none;
+    stroke: white;
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: draw-line 1.5s ease-out forwards;
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8));
+}
+
+@keyframes draw-line {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.sequence-line.red {
+    stroke: #ff7675;
+}
+
+.sequence-line.blue {
+    stroke: #74b9ff;
+}
+
+.sequence-line.green {
+    stroke: #55efc4;
+}
