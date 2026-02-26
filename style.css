@@ -1335,6 +1335,7 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     height: 100%;
     pointer-events: none;
     z-index: 100;
+    box-sizing: border-box;
 }
 
 .sequence-line {

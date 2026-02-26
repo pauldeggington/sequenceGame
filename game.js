@@ -1337,31 +1337,34 @@ class SequenceGame {
         let updated = false;
         const colors = TEAM_COLORS.slice(0, this.teamCount);
 
-        for (const color of colors) {
-            const count = this.countSequencesForColor(color);
-            if (count > (this.sequences[color] || 0)) {
-                this.sequences[color] = count;
-                this.log(`🎉 ${color} formed sequence #${count}!`);
-                this.showSequencePopup(color);
-                updated = true;
+        // Small delay to ensure browser has rendered chip elements for coordinate calculation
+        setTimeout(() => {
+            for (const color of colors) {
+                const count = this.countSequencesForColor(color);
+                if (count > (this.sequences[color] || 0)) {
+                    this.sequences[color] = count;
+                    this.log(`🎉 ${color} formed sequence #${count}!`);
+                    this.showSequencePopup(color);
+                    updated = true;
+                }
             }
-        }
 
-        this.updateScoreUI();
+            this.updateScoreUI();
 
-        const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
-        const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
+            const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
+            const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
 
-        if (winner) {
-            this.currentTurn = null;
-            this.log(`🏆 ${winner} wins!`);
-            this.showWinPopup(winner);
-        }
+            if (winner) {
+                this.currentTurn = null;
+                this.log(`🏆 ${winner} wins!`);
+                this.showWinPopup(winner);
+            }
 
-        if (updated && this.sendSync) {
-            this.sendSync({ sequences: this.sequences, winner });
-            if (this.isHost) this.saveGameState();
-        }
+            if (updated && this.sendSync) {
+                this.sendSync({ sequences: this.sequences, winner });
+                if (this.isHost) this.saveGameState();
+            }
+        }, 100);
     }
 
     saveGameState() {
@@ -1440,17 +1443,16 @@ class SequenceGame {
         const ui = this.ui;
         if (!ui.board || !ui.seqLines) return;
 
-        const boardRect = ui.board.getBoundingClientRect();
         const startCell = ui.board.children[cells[0].r * 10 + cells[0].c];
         const endCell = ui.board.children[cells[4].r * 10 + cells[4].c];
 
-        const r1 = startCell.getBoundingClientRect();
-        const r2 = endCell.getBoundingClientRect();
+        if (!startCell || !endCell) return;
 
-        const x1 = (r1.left + r1.width / 2) - boardRect.left;
-        const y1 = (r1.top + r1.height / 2) - boardRect.top;
-        const x2 = (r2.left + r2.width / 2) - boardRect.left;
-        const y2 = (r2.top + r2.height / 2) - boardRect.top;
+        // Coordinates relative to the parent board container
+        const x1 = startCell.offsetLeft + (startCell.offsetWidth / 2);
+        const y1 = startCell.offsetTop + (startCell.offsetHeight / 2);
+        const x2 = endCell.offsetLeft + (endCell.offsetWidth / 2);
+        const y2 = endCell.offsetTop + (endCell.offsetHeight / 2);
 
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
         line.setAttribute("x1", x1);
