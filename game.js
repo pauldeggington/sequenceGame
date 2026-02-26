@@ -786,7 +786,7 @@ class SequenceGame {
         this.deck = this.createDeck();
         this.shuffle(this.deck);
 
-        const colors = CONFIG.TEAMS.slice(0, this.teamCount);
+        const colors = TEAM_COLORS.slice(0, this.teamCount);
         const assignments = [];
         assignments.push({ peerId: null, playerID: this.playerID, color: colors[0], name: this.myName || 'Host' });
 
@@ -821,63 +821,58 @@ class SequenceGame {
         const cardsPerPlayer = totalPlayers <= 2 ? 7 : totalPlayers <= 4 ? 6 : 5;
         this.winTarget = (totalPlayers > 2 && this.teamCount === 3) ? 1 : 2;
 
-        try {
-            this.playerStates = {};
-            assignments.forEach(a => {
-                const hand = this.deck.splice(0, cardsPerPlayer);
-                this.playerStates[a.playerID] = {
-                    color: a.color,
-                    hand: hand,
-                    name: a.name,
-                    peerId: a.peerId
-                };
-            });
+        this.playerStates = {};
+        assignments.forEach(a => {
+            const hand = this.deck.splice(0, cardsPerPlayer);
+            this.playerStates[a.playerID] = {
+                color: a.color,
+                hand: hand,
+                name: a.name,
+                peerId: a.peerId
+            };
+        });
 
-            this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-            this.sequences = { red: 0, blue: 0, green: 0 };
-            this.lastMove = null;
+        this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+        this.sequences = { red: 0, blue: 0, green: 0 };
+        this.lastMove = null;
 
-            // Host setup
-            const hostState = this.playerStates[this.playerID];
-            this.hand = hostState.hand;
-            this.myColor = hostState.color;
-            this.currentTurn = colors[0];
-            this.started = true;
+        // Host setup
+        const hostState = this.playerStates[this.playerID];
+        this.hand = hostState.hand;
+        this.myColor = hostState.color;
+        this.currentTurn = colors[0];
+        this.started = true;
 
-            // Send to each peer
-            assignments.forEach(a => {
-                if (a.peerId) {
-                    const pState = this.playerStates[a.playerID];
-                    this.sendTo(a.peerId, 'gameStart', {
-                        deck: [...this.deck],
-                        myHand: pState.hand,
-                        myColor: pState.color,
-                        currentTurn: colors[0],
-                        teamCount: this.teamCount,
-                        winTarget: this.winTarget,
-                        colorNames: this.colorNames,
-                        hintsEnabled: this.hintsEnabled,
-                        lastMove: this.lastMove
-                    });
-                }
-            });
+        // Send to each peer
+        assignments.forEach(a => {
+            if (a.peerId) {
+                const pState = this.playerStates[a.playerID];
+                this.sendGameStart({
+                    deck: [...this.deck],
+                    myHand: pState.hand,
+                    myColor: pState.color,
+                    currentTurn: colors[0],
+                    teamCount: this.teamCount,
+                    winTarget: this.winTarget,
+                    colorNames: this.colorNames,
+                    hintsEnabled: this.hintsEnabled,
+                    lastMove: this.lastMove
+                }, a.peerId);
+            }
+        });
 
-            this.turnOrder = assignments.map(a => a.color);
+        this.turnOrder = assignments.map(a => a.color);
 
-            // Host reset overlay
-            const ui = this.ui;
-            if (ui.gameOverOverlay) ui.gameOverOverlay.style.display = 'none';
-            if (ui.playAgainWaiting) ui.playAgainWaiting.style.display = 'none';
-            if (ui.playAgainBtn) ui.playAgainBtn.style.display = 'inline-block';
+        // Host reset overlay
+        const ui = this.ui;
+        if (ui.gameOverOverlay) ui.gameOverOverlay.style.display = 'none';
+        if (ui.playAgainWaiting) ui.playAgainWaiting.style.display = 'none';
+        if (ui.playAgainBtn) ui.playAgainBtn.style.display = 'inline-block';
 
-            this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-            this.sequences = { red: 0, blue: 0, green: 0 };
+        this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+        this.sequences = { red: 0, blue: 0, green: 0 };
 
-            this.showGameScreen();
-        } catch (e) {
-            alert("Error in startGame: " + e.message + "\n" + e.stack);
-            console.error("Start Game Error", e);
-        }
+        this.showGameScreen();
     }
 
     showGameScreen() {
@@ -902,12 +897,6 @@ class SequenceGame {
 
         this.log(`🎨 ${this.myName || 'Player'} on team ${this.myColor.toUpperCase()}`);
         this.log(`🃏 Cards dealt! ${this.currentTurn} goes first.`);
-    }
-
-    sendEmoji(emoji) {
-        if (!this.isSinglePlayer) {
-            this.broadcast('emoji', emoji);
-        }
     }
 
     initGameElements() {
@@ -1238,7 +1227,7 @@ class SequenceGame {
         }
 
         // Calculate next turn
-        const colors = CONFIG.TEAMS.slice(0, this.teamCount);
+        const colors = TEAM_COLORS.slice(0, this.teamCount);
         const myIdx = colors.indexOf(this.myColor);
         const nextTurn = colors[(myIdx + 1) % colors.length];
 
@@ -1538,7 +1527,7 @@ class SequenceGame {
     }
 
     evaluateMove(r, c, type, color) {
-        const colors = CONFIG.TEAMS.slice(0, this.teamCount);
+        const colors = TEAM_COLORS.slice(0, this.teamCount);
         const opponents = colors.filter(clr => clr !== color);
         const testChips = this.chips.map(row => [...row]);
 
