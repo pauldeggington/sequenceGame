@@ -725,9 +725,9 @@ class SequenceGame {
     renderBoard(forceFullRedraw = false) {
         if (!this.boardEl) return;
 
-        // If we already have the cells, just update highlights unless forced
+        // If we already have the cells, just update them unless forced
         if (!forceFullRedraw && this.boardEl.children.length === 100) {
-            this.updateHighlightsOnly();
+            this.syncBoardState();
             return;
         }
 
@@ -791,7 +791,7 @@ class SequenceGame {
         }
     }
 
-    updateHighlightsOnly() {
+    syncBoardState() {
         const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
         const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
 
@@ -801,6 +801,7 @@ class SequenceGame {
                 const val = this.board[r][c];
                 const chip = this.chips[r][c];
 
+                // 1. Sync Highlights
                 let highlight = '';
                 if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
                 if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
@@ -814,6 +815,21 @@ class SequenceGame {
                 const baseClass = val === 'FREE' ? 'cell free' : 'cell';
                 if (cell.className !== baseClass + highlight) {
                     cell.className = baseClass + highlight;
+                }
+
+                // 2. Sync Chips
+                let chipEl = cell.querySelector('.chip');
+                if (chip) {
+                    if (!chipEl) {
+                        chipEl = document.createElement('div');
+                        cell.appendChild(chipEl);
+                    }
+                    const chipClass = `chip ${chip}`;
+                    if (chipEl.className !== chipClass) {
+                        chipEl.className = chipClass;
+                    }
+                } else if (chipEl) {
+                    chipEl.remove();
                 }
             }
         }
@@ -911,13 +927,13 @@ class SequenceGame {
             cardEl.onpointerenter = () => {
                 if (this.currentTurn !== this.myColor || !this.hintsEnabled) return;
                 this.hoveredCardIndex = index;
-                this.updateHighlightsOnly();
+                this.syncBoardState();
             };
 
             cardEl.onpointerleave = () => {
                 if (this.hoveredCardIndex === index) {
                     this.hoveredCardIndex = null;
-                    this.updateHighlightsOnly();
+                    this.syncBoardState();
                 }
             };
 
