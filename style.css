@@ -251,10 +251,11 @@ body {
     color: #55efc4;
 }
 
-/* Hide teams selection in single player mode */
-.single-player-setup h3:nth-of-type(2),
-.single-player-setup .team-buttons {
-    display: none !important;
+/* Adjust single player setup labels */
+.single-player-setup h3:nth-of-type(2)::after {
+    content: ' (1v1 or 1v1v1)';
+    font-size: 0.7rem;
+    opacity: 0.8;
 }
 
 /* Player list */
