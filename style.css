@@ -746,15 +746,16 @@ header h1 {
 .footer-row {
     display: flex;
     gap: 10px;
-    align-items: center;
+    align-items: stretch;
     width: 100%;
+    height: 44px;
     margin-top: 10px;
 }
 
 /* Game log */
 #game-log {
     flex: 0 0 80%;
-    height: 44px;
+    height: 100%;
     overflow-y: auto;
     font-size: 1.1rem;
     padding: 0;
@@ -936,24 +937,20 @@ header h1 {
         /* Lift hand slightly */
     }
 
-    #game-log {
-        height: 48px;
-        flex: 1;
-        /* Allow log to take remain space on mobile */
-    }
-
     .footer-row {
+        height: 48px;
         margin-bottom: 25px;
         /* Lift row up from the very bottom for better reach */
     }
 
-    #emoji-picker-container {
-        flex: 0 0 20%;
+    #game-log {
+        height: 100%;
+        flex: 1;
+        /* Allow log to take remain space on mobile */
     }
 
-    #emoji-trigger {
-        height: 48px;
-        /* Match mobile log height */
+    #emoji-picker-container {
+        flex: 0 0 20%;
     }
 }
 
@@ -1122,13 +1119,13 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 
 #emoji-trigger {
     width: 100%;
-    height: 44px;
-    /* Match log height */
-    padding: 5px;
+    height: 100%;
+    padding: 0;
     font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: none;
 }
 
 #emoji-menu {
