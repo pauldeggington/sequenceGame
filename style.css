@@ -1195,3 +1195,21 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     position: relative;
     /* Ensure floats are relative to board */
 }
+
+/* ── Hand Dealing Animation ── */
+@keyframes card-deal {
+    0% {
+        transform: translateY(100px) rotate(10deg);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0) rotate(0);
+        opacity: 1;
+    }
+}
+
+.card.dealing {
+    animation: card-deal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    opacity: 0;
+}

@@ -633,7 +633,7 @@ class SequenceGame {
 
         this.initGameElements();
         this.renderBoard();
-        this.renderHand();
+        this.renderHand(true); // Animate first deal
         this.updateTurnUI();
         this.updateScoreUI();
 
@@ -788,7 +788,7 @@ class SequenceGame {
         }
     }
 
-    renderHand() {
+    renderHand(animate = false) {
         if (!this.handEl) return;
         this.handEl.innerHTML = '';
         this.hand.forEach((card, index) => {
@@ -800,8 +800,13 @@ class SequenceGame {
                 'card',
                 this.selectedCardIndex === index ? 'selected' : '',
                 isOneEye ? 'jack-one-eye' : '',
-                isTwoEye ? 'jack-two-eye' : ''
+                isTwoEye ? 'jack-two-eye' : '',
+                animate ? 'dealing' : ''
             ].filter(Boolean).join(' ');
+
+            if (animate) {
+                cardEl.style.animationDelay = `${index * 0.1}s`;
+            }
 
             const img = document.createElement('img');
             img.src = getCardImagePath(card);
