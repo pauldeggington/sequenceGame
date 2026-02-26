@@ -13,8 +13,8 @@ const BOARD_LAYOUT = [
     ["FREE", "2S", "3S", "4S", "5S", "10D", "QD", "KD", "AD", "FREE"],
     ["6C", "5C", "4C", "3C", "2C", "4S", "5S", "6S", "7S", "AC"],
     ["7C", "AS", "2D", "3D", "4D", "KC", "QC", "10C", "8C", "KC"],
-    ["8C", "KS", "6C", "5C", "4C", "9H", "8H", "9C", "9S", "QC"],
-    ["9C", "QS", "7C", "6H", "5H", "2H", "7H", "8C", "10S", "10C"],
+    ["8C", "KS", "6C", "5C", "4C", "9D", "8H", "9C", "9S", "QC"],
+    ["9C", "QS", "7C", "6H", "5H", "2H", "7H", "8H", "10S", "10C"],
     ["AS", "7H", "9H", "AH", "4H", "3H", "KH", "10D", "6H", "2D"],
     ["KS", "8H", "8D", "2C", "3C", "10H", "QH", "QD", "5H", "3D"],
     ["QS", "9H", "7D", "6D", "5D", "AC", "AD", "KD", "4H", "4D"],
@@ -966,19 +966,25 @@ class SequenceGame {
         const ui = this.ui;
         if (!ui.board) return;
 
-        if (!forceFullRedraw && ui.board.children.length === 100) {
+        // Preserve the SVG if it exists
+        const svg = ui.seqLines || document.getElementById('sequence-lines');
+
+        if (!forceFullRedraw && ui.board.querySelectorAll('.cell').length === 100) {
             this.syncBoardState();
             return;
         }
 
         ui.board.innerHTML = '';
+        if (svg) ui.board.appendChild(svg);
+
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
                 const val = this.board[r][c];
                 const cell = document.createElement('div');
+                cell.id = `cell-${r}-${c}`;
                 const chip = this.chips[r][c];
 
-                cell.className = this.calculateCellClass(r, c);
+                cell.className = `cell ${this.calculateCellClass(r, c)}`;
 
                 if (val === 'FREE') {
                     const freeEl = document.createElement('div');
@@ -1005,7 +1011,8 @@ class SequenceGame {
 
                 if (chip) {
                     const chipEl = document.createElement('div');
-                    chipEl.className = `chip ${chip}`;
+                    const isLocked = this.sequenceGrid && this.sequenceGrid[r][c];
+                    chipEl.className = `chip ${chip}${isLocked ? ' locked' : ''}`;
                     cell.appendChild(chipEl);
                 }
 
@@ -1029,17 +1036,18 @@ class SequenceGame {
             if ((val === selectedCard || val === hoveredCard) && !chip) highlight = ' highlight-hint';
         }
 
-        return `cell${val === 'FREE' ? ' free' : ''}${highlight}`;
+        return `${val === 'FREE' ? ' free' : ''}${highlight}`;
     }
 
     syncBoardState() {
         const ui = this.ui;
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
-                const cell = ui.board.children[r * 10 + c];
+                const cell = document.getElementById(`cell-${r}-${c}`);
+                if (!cell) continue;
                 const chip = this.chips[r][c];
 
-                const targetClass = this.calculateCellClass(r, c);
+                const targetClass = `cell ${this.calculateCellClass(r, c)}`;
                 if (cell.className !== targetClass) cell.className = targetClass;
 
                 let chipEl = cell.querySelector('.chip');
@@ -1463,30 +1471,28 @@ class SequenceGame {
     }
 
     drawSequenceLine(cells, color) {
-        const ui = this.ui;
-        if (!ui.board || !ui.seqLines) return;
+        // Always re-query to ensure we have the live element in the board
+        const svg = document.getElementById('sequence-lines');
+        if (!svg) return;
 
-        const startCell = ui.board.children[cells[0].r * 10 + cells[0].c];
-        const endCell = ui.board.children[cells[4].r * 10 + cells[4].c];
+        const points = cells.map(pos => {
+            const cell = document.getElementById(`cell-${pos.r}-${pos.c}`);
+            if (!cell) return null;
 
-        if (!startCell || !endCell) return;
+            const boardRect = svg.getBoundingClientRect();
+            const rect = cell.getBoundingClientRect();
 
-        // Calculate positions in percentage to make them truly responsive
-        const boardWidth = ui.board.offsetWidth;
-        const boardHeight = ui.board.offsetHeight;
+            const x = rect.left - boardRect.left + (rect.width / 2);
+            const y = rect.top - boardRect.top + (rect.height / 2);
+            return `${x},${y}`;
+        }).filter(p => p !== null).join(' ');
 
-        const x1 = ((startCell.offsetLeft + (startCell.offsetWidth / 2)) / boardWidth) * 100;
-        const y1 = ((startCell.offsetTop + (startCell.offsetHeight / 2)) / boardHeight) * 100;
-        const x2 = ((endCell.offsetLeft + (endCell.offsetWidth / 2)) / boardWidth) * 100;
-        const y2 = ((endCell.offsetTop + (endCell.offsetHeight / 2)) / boardHeight) * 100;
+        if (!points) return;
 
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", `${x1}%`);
-        line.setAttribute("y1", `${y1}%`);
-        line.setAttribute("x2", `${x2}%`);
-        line.setAttribute("y2", `${y2}%`);
-        line.setAttribute("class", `sequence-line ${color}`);
-        ui.seqLines.appendChild(line);
+        const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+        polyline.setAttribute("points", points);
+        polyline.setAttribute("class", `sequence-line ${color}`);
+        svg.appendChild(polyline);
     }
 
     // ══════════════════════════════════════

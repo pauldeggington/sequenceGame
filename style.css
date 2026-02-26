@@ -548,6 +548,8 @@ header h1 {
     height: auto;
     box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 10px 25px rgba(0, 0, 0, 0.4);
     padding: 4px;
+    position: relative;
+    /* Coordinate anchor for cells and SVG */
     margin: 0 auto;
 }
 
@@ -1338,6 +1340,8 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     pointer-events: none;
     z-index: 100;
     box-sizing: border-box;
+    overflow: visible;
+    /* Prevent clipping at board edges */
 }
 
 .sequence-line {
@@ -1345,8 +1349,9 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     stroke: white;
     stroke-width: 6;
     stroke-linecap: round;
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
+    stroke-linejoin: round;
+    stroke-dasharray: 3000;
+    stroke-dashoffset: 3000;
     animation: draw-line 1.5s ease-out forwards;
     filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8));
 }
