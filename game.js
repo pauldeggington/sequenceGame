@@ -470,9 +470,11 @@ class SequenceGame {
                 }
                 this.syncPlayers();
             } else {
-                statusEl.innerText = "Connected! Waiting for host to start...";
-                waitMsg.style.display = 'block';
-                playerList.style.display = 'block';
+                if (ui) {
+                    ui.status.innerText = "Connected! Waiting for host to start...";
+                    ui.waitMsg.style.display = 'block';
+                    ui.playerList.style.display = 'block';
+                }
                 if (this.myName) {
                     this.sendName(this.myName);
                 }
@@ -496,7 +498,7 @@ class SequenceGame {
                     this.log(`❌ ${leaverName} disconnected.`);
                 }
             } else {
-                statusEl.innerText = "Connection lost. Attempting reconnect...";
+                if (ui) ui.status.innerText = "Connection lost. Attempting reconnect...";
                 this.attemptReconnect();
             }
         });
@@ -689,8 +691,15 @@ class SequenceGame {
     // ══════════════════════════════════════
     // RENDERING
     // ══════════════════════════════════════
-    renderBoard() {
+    renderBoard(forceFullRedraw = false) {
         if (!this.boardEl) return;
+
+        // If we already have the cells, just update highlights unless forced
+        if (!forceFullRedraw && this.boardEl.children.length === 100) {
+            this.updateHighlightsOnly();
+            return;
+        }
+
         this.boardEl.innerHTML = '';
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
@@ -751,6 +760,34 @@ class SequenceGame {
         }
     }
 
+    updateHighlightsOnly() {
+        const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
+        const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
+
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                const cell = this.boardEl.children[r * 10 + c];
+                const val = this.board[r][c];
+                const chip = this.chips[r][c];
+
+                let highlight = '';
+                if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
+                if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
+
+                if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
+                    if ((val === selectedCard || val === hoveredCard) && !chip) {
+                        highlight = ' highlight-hint';
+                    }
+                }
+
+                const baseClass = val === 'FREE' ? 'cell free' : 'cell';
+                if (cell.className !== baseClass + highlight) {
+                    cell.className = baseClass + highlight;
+                }
+            }
+        }
+    }
+
     renderHand() {
         if (!this.handEl) return;
         this.handEl.innerHTML = '';
@@ -778,8 +815,10 @@ class SequenceGame {
                 cardEl.appendChild(badge);
             }
 
-            cardEl.onclick = () => {
+            cardEl.onpointerdown = (e) => {
                 if (this.currentTurn !== this.myColor) return;
+                // prevent selection ghosting/drag
+                if (e.pointerType === 'touch') e.preventDefault();
 
                 // Check if card is dead (no empty spots left on the board)
                 if (!isOneEye && !isTwoEye) {
@@ -833,16 +872,16 @@ class SequenceGame {
                 this.updateJackHint();
             };
 
-            cardEl.onmouseenter = () => {
+            cardEl.onpointerenter = () => {
                 if (this.currentTurn !== this.myColor || !this.hintsEnabled) return;
                 this.hoveredCardIndex = index;
-                this.renderBoard();
+                this.updateHighlightsOnly();
             };
 
-            cardEl.onmouseleave = () => {
+            cardEl.onpointerleave = () => {
                 if (this.hoveredCardIndex === index) {
                     this.hoveredCardIndex = null;
-                    this.renderBoard();
+                    this.updateHighlightsOnly();
                 }
             };
 
