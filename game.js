@@ -85,26 +85,29 @@ class SequenceGame {
     // SETUP SCREEN
     // ══════════════════════════════════════
     initSetup() {
-        const statusEl = document.getElementById('setup-status');
-        const inviteBox = document.getElementById('invite-box');
-        const inviteUrl = document.getElementById('invite-url');
-        const teamCfg = document.getElementById('team-config');
-        const playerList = document.getElementById('player-list');
-        const playersEl = document.getElementById('players-connected');
-        const startBtn = document.getElementById('start-game-btn');
-        const waitMsg = document.getElementById('waiting-msg');
-        const teamLabels = document.getElementById('team-labels');
-        const nameInput = document.getElementById('player-name');
-        const createSec = document.getElementById('create-game-section');
-        const createBtn = document.getElementById('create-game-btn');
+        this.setupUI = {
+            status: document.getElementById('setup-status'),
+            inviteBox: document.getElementById('invite-box'),
+            inviteUrl: document.getElementById('invite-url'),
+            teamCfg: document.getElementById('team-config'),
+            playerList: document.getElementById('player-list'),
+            playersEl: document.getElementById('players-connected'),
+            startBtn: document.getElementById('start-game-btn'),
+            waitMsg: document.getElementById('waiting-msg'),
+            teamLabels: document.getElementById('team-labels'),
+            nameInput: document.getElementById('player-name'),
+            createSec: document.getElementById('create-game-section'),
+            createBtn: document.getElementById('create-game-btn'),
+        };
 
         const renderSetupState = () => {
-            playersEl.innerHTML = '';
+            if (!this.setupUI.playersEl) return;
+            this.setupUI.playersEl.innerHTML = '';
             const myDisplay = this.myName || 'You';
             const me = document.createElement('div');
             me.className = 'player-entry me';
             me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            playersEl.appendChild(me);
+            this.setupUI.playersEl.appendChild(me);
 
             this.peers.forEach((pid, i) => {
                 const el = document.createElement('div');
@@ -115,7 +118,7 @@ class SequenceGame {
                     else peerName = `Player ${i + 2}`;
                 }
                 el.innerText = `👤 ${peerName}`;
-                playersEl.appendChild(el);
+                this.setupUI.playersEl.appendChild(el);
             });
         };
 
@@ -131,15 +134,17 @@ class SequenceGame {
         };
 
         // Name input
-        nameInput.addEventListener('input', () => {
-            this.myName = nameInput.value.trim();
-            if (this.isHost) {
-                this.syncPlayers();
-            } else if (this.sendName) {
-                this.sendName(this.myName);
-            }
-            renderSetupState();
-        });
+        if (this.setupUI.nameInput) {
+            this.setupUI.nameInput.addEventListener('input', () => {
+                this.myName = this.setupUI.nameInput.value.trim();
+                if (this.isHost) {
+                    this.syncPlayers();
+                } else if (this.sendName) {
+                    this.sendName(this.myName);
+                }
+                renderSetupState();
+            });
+        }
 
         // ── Actions Setup ──
         this.sendName = (name) => this.broadcast('name', name);
@@ -149,222 +154,242 @@ class SequenceGame {
         this.sendSync = (data) => this.broadcast('sync', data);
         this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
 
-        const startSession = (roomId, isHost) => {
-            this.isHost = isHost;
-            createSec.style.display = 'none';
-
-            if (isHost && window.location.hash !== '#' + roomId) {
-                window.location.hash = roomId;
-            }
-
-            localStorage.setItem('sequence_roomID', roomId);
-            localStorage.setItem('sequence_isHost', isHost ? 'true' : 'false');
-
-            const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
-            this.peer = new Peer(this.isHost ? roomId : undefined);
-
-            this.peer.on('open', (id) => {
-                if (this.isHost) {
-                    statusEl.innerText = "Waiting for players...";
-                    inviteBox.style.display = 'block';
-                    inviteUrl.value = shareUrl;
-                    inviteUrl.addEventListener('click', () => {
-                        inviteUrl.select();
-                        navigator.clipboard.writeText(shareUrl).then(() => {
-                            const originalLabel = document.querySelector('.invite-label').innerText;
-                            document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
-                            document.querySelector('.invite-label').style.color = 'var(--gold)';
-                            setTimeout(() => {
-                                document.querySelector('.invite-label').innerText = originalLabel;
-                                document.querySelector('.invite-label').style.color = '';
-                            }, 2000);
-                        });
-                    });
-                    teamCfg.style.display = 'block';
-                    this.updateTeamLabels(teamLabels);
-                    renderSetupState();
-                } else {
-                    console.log("Attempting to join session:", roomId);
-                    this.connectToHost(roomId);
-                }
-            });
-
-            if (this.isHost) {
-                this.peer.on('connection', (conn) => {
-                    this.setupConnection(conn);
-                });
-            }
-
-            this.peer.on('error', (err) => {
-                console.error("PeerJS Network Error:", err);
-                if (!this.isHost) {
-                    if (err.type === 'peer-unavailable') {
-                        statusEl.innerText = "Host room not found. Retrying in 5s...";
-                    } else {
-                        statusEl.innerText = "Network error. Retrying in 5s...";
-                    }
-                    setTimeout(() => this.attemptReconnect(), 5000);
-                } else {
-                    statusEl.innerText = "Network Error: " + err.type;
-                }
-            });
-        };
-
         // Determine room ID and start flow
         const hashId = window.location.hash.substring(1);
         const savedRoomId = localStorage.getItem('sequence_roomID');
         const savedIsHost = localStorage.getItem('sequence_isHost');
 
         if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
-            statusEl.innerText = "Re-hosting room...";
-            startSession(hashId, true);
+            this.setupUI.status.innerText = "Re-hosting room...";
+            this.startSession(hashId, true);
         } else if (hashId) {
-            statusEl.innerText = "Joining room...";
-            startSession(hashId, false);
+            this.setupUI.status.innerText = "Joining room...";
+            this.startSession(hashId, false);
         } else if (savedRoomId && savedIsHost === 'true') {
-            createSec.style.display = 'block';
-            statusEl.innerText = "Ready to start a game";
+            this.setupUI.createSec.style.display = 'block';
+            this.setupUI.status.innerText = "Ready to start a game";
         } else {
-            createSec.style.display = 'block';
-            statusEl.innerText = "Welcome to Very Wild Jacks";
+            this.setupUI.createSec.style.display = 'block';
+            this.setupUI.status.innerText = "Welcome to Very Wild Jacks";
         }
 
-        createBtn.addEventListener('click', () => {
+        this.setupUI.createBtn.addEventListener('click', () => {
             const newId = genId(8);
-            statusEl.innerText = "Creating room...";
-            startSession(newId, true);
+            this.setupUI.status.innerText = "Creating room...";
+            this.startSession(newId, true);
         });
 
-        // ── Data Handlers ──
-        this.handleData = (type, data, peerId) => {
-            if (type === 'name') {
-                if (this.isHost) {
-                    this.peerNames[peerId] = data;
-                    this.syncPlayers();
-                }
-            } else if (type === 'players_sync') {
-                if (!this.isHost) {
-                    this.peers = data.peers.filter(id => id !== this.peer.id);
-                    if (!this.peers.includes('HOST')) this.peers.unshift('HOST');
-                    this.peerNames = data.peerNames;
-                    this.peerNames['HOST'] = data.hostName ? data.hostName + " (Host)" : "Host";
-                    renderSetupState();
-                }
-            } else if (type === 'config' && !this.isHost) {
-                if (data.teamCount) {
-                    this.teamCount = data.teamCount;
-                    document.querySelectorAll('.team-btn').forEach(btn => {
-                        btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
-                    });
-                    this.updateTeamLabels(teamLabels);
-                }
-                if (data.hintsEnabled !== undefined) {
-                    this.hintsEnabled = data.hintsEnabled;
-                    const toggle = document.getElementById('show-hints-toggle');
-                    if (toggle) toggle.checked = this.hintsEnabled;
-                }
-                teamCfg.style.display = 'block';
-                playerList.style.display = 'block';
-            } else if (type === 'gameStart') {
-                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-                this.sequences = { red: 0, blue: 0, green: 0 };
-                document.getElementById('game-over-overlay').style.display = 'none';
-                document.getElementById('play-again-waiting').style.display = 'none';
+        this.initEventListeners();
+    }
 
-                this.deck = data.deck;
-                this.hand = data.myHand;
-                this.myColor = data.myColor;
-                this.currentTurn = data.currentTurn;
-                this.teamCount = data.teamCount;
-                this.winTarget = data.winTarget || (this.teamCount === 3 ? 1 : 2);
-                this.colorNames = data.colorNames || {};
-                this.hintsEnabled = data.hintsEnabled || false;
-                this.started = true;
-                this.showGameScreen();
+    initEventListeners() {
+        const ui = this.setupUI;
+        if (!ui) return;
 
-                if (data.boardChips) {
-                    this.chips = data.boardChips;
-                    this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
-                    this.renderBoard();
-                    this.updateScoreUI();
-                }
-            } else if (type === 'move') {
-                this.applyOpponentMove(data);
-                this.currentTurn = data.nextTurn;
-                this.updateTurnUI();
-                if (this.isHost) this.broadcast('move', data, peerId);
-            } else if (type === 'sync') {
-                this.sequences = data.sequences;
-                this.updateScoreUI();
-                this.renderBoard();
-                if (data.winner) {
-                    this.currentTurn = null;
-                    this.showWinPopup(data.winner);
-                }
-            } else if (type === 'emoji') {
-                this.showEmojiFloat(data);
-                if (this.isHost) this.broadcast('emoji', data, peerId);
-            }
-        };
-
-        // ── Setup UI ──
         // Team buttons
         document.querySelectorAll('.team-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.onmousedown = () => { // focus fix
                 document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 this.teamCount = parseInt(btn.dataset.teams);
-                this.updateTeamLabels(teamLabels);
-                // Tell peers about config change
+                this.updateTeamLabels(ui.teamLabels);
                 this.sendConfig({ teamCount: this.teamCount });
-            });
+            };
         });
 
-        // Start button (host only)
-        startBtn.addEventListener('click', () => {
-            this.startGame();
-        });
+        // Start button
+        ui.startBtn.onclick = () => this.startGame();
 
-
-
-
-
-        // Handle hint toggle change
+        // Hint toggle
         const hintToggle = document.getElementById('show-hints-toggle');
-        hintToggle.addEventListener('change', () => {
-            this.hintsEnabled = hintToggle.checked;
-            if (this.isHost) {
-                this.sendConfig({ hintsEnabled: this.hintsEnabled });
-            }
-        });
-
-
-
-        // Play Again Button
-        const playAgainBtn = document.getElementById('play-again-btn');
-        const playAgainWait = document.getElementById('play-again-waiting');
-        if (playAgainBtn) {
-            playAgainBtn.addEventListener('click', () => {
+        if (hintToggle) {
+            hintToggle.onchange = () => {
+                this.hintsEnabled = hintToggle.checked;
                 if (this.isHost) {
-                    // Host resets board and broadcasts a new game
-                    this.startGame();
-                } else {
-                    // Client simply waits for the host
-                    playAgainWait.style.display = 'block';
-                    playAgainBtn.style.display = 'none';
+                    this.sendConfig({ hintsEnabled: this.hintsEnabled });
                 }
-            });
+            };
         }
 
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === 'visible') {
-                if (!this.isHost && (!this.hostConnection || !this.hostConnection.open)) {
-                    document.getElementById('setup-status').innerText = "Resuming session...";
+        // Play Again
+        const playAgainBtn = document.getElementById('play-again-btn');
+        if (playAgainBtn) {
+            playAgainBtn.onclick = () => {
+                if (this.isHost) {
+                    this.startGame();
+                } else {
+                    document.getElementById('play-again-waiting').style.display = 'block';
+                    playAgainBtn.style.display = 'none';
+                }
+            };
+        }
+
+        window.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible' && !this.isHost) {
+                if (!this.hostConnection || !this.hostConnection.open) {
                     this.attemptReconnect();
                 }
             }
         });
     }
+
+    startSession(roomId, isHost) {
+        this.isHost = isHost;
+        this.currentRoomId = roomId;
+        const ui = this.setupUI;
+        if (!ui) return;
+
+        ui.createSec.style.display = 'none';
+
+        if (isHost && window.location.hash !== '#' + roomId) {
+            window.location.hash = roomId;
+        }
+
+        localStorage.setItem('sequence_roomID', roomId);
+        localStorage.setItem('sequence_isHost', isHost ? 'true' : 'false');
+
+        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
+
+        // Cleanup old peer if exists
+        if (this.peer && !this.peer.destroyed) {
+            this.peer.destroy();
+        }
+
+        this.peer = new Peer(this.isHost ? roomId : undefined);
+
+        this.peer.on('open', (id) => {
+            if (this.isHost) {
+                ui.status.innerText = "Waiting for players...";
+                ui.inviteBox.style.display = 'block';
+                ui.inviteUrl.value = shareUrl;
+                ui.inviteUrl.onmousedown = () => { // using mousedown for quick selection
+                    ui.inviteUrl.select();
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        const originalLabel = document.querySelector('.invite-label').innerText;
+                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                        document.querySelector('.invite-label').style.color = 'var(--gold)';
+                        setTimeout(() => {
+                            document.querySelector('.invite-label').innerText = originalLabel;
+                            document.querySelector('.invite-label').style.color = '';
+                        }, 2000);
+                    });
+                };
+                ui.teamCfg.style.display = 'block';
+                this.updateTeamLabels(ui.teamLabels);
+                if (this.syncPlayers) this.syncPlayers();
+            } else {
+                console.log("Attempting to join session:", roomId);
+                this.connectToHost(roomId);
+            }
+        });
+
+        this.peer.on('disconnected', () => {
+            console.log("Disconnected from signaling server. Reconnecting...");
+            ui.status.innerText = "Connection lost. Reconnecting...";
+            this.peer.reconnect();
+        });
+
+        if (this.isHost) {
+            this.peer.on('connection', (conn) => {
+                this.setupConnection(conn);
+            });
+        }
+
+        this.peer.on('error', (err) => {
+            console.error("PeerJS Network Error:", err);
+            if (!this.isHost) {
+                if (err.type === 'peer-unavailable') {
+                    ui.status.innerText = "Host room not found. Retrying in 5s...";
+                } else {
+                    ui.status.innerText = "Network error: " + err.type;
+                }
+                setTimeout(() => this.attemptReconnect(), 5000);
+            } else {
+                if (err.type === 'identity-taken') {
+                    ui.status.innerText = "ID Taken. Re-initializing...";
+                    setTimeout(() => this.startSession(roomId, true), 3000);
+                } else {
+                    ui.status.innerText = "Network Error: " + err.type;
+                }
+            }
+        });
+    }
+
+    handleData(type, data, peerId) {
+        const ui = this.setupUI;
+        if (type === 'name') {
+            if (this.isHost) {
+                this.peerNames[peerId] = data;
+                this.syncPlayers();
+            }
+        } else if (type === 'players_sync') {
+            if (!this.isHost) {
+                this.peers = data.peers.filter(id => id !== this.peer.id);
+                if (!this.peers.includes('HOST')) this.peers.unshift('HOST');
+                this.peerNames = data.peerNames;
+                this.peerNames['HOST'] = data.hostName ? data.hostName + " (Host)" : "Host";
+                if (this.syncPlayers) this.syncPlayers(); // triggers renderstate
+            }
+        } else if (type === 'config' && !this.isHost) {
+            if (data.teamCount) {
+                this.teamCount = data.teamCount;
+                document.querySelectorAll('.team-btn').forEach(btn => {
+                    btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
+                });
+                this.updateTeamLabels(ui ? ui.teamLabels : null);
+            }
+            if (data.hintsEnabled !== undefined) {
+                this.hintsEnabled = data.hintsEnabled;
+                const toggle = document.getElementById('show-hints-toggle');
+                if (toggle) toggle.checked = this.hintsEnabled;
+            }
+            if (ui) {
+                ui.teamCfg.style.display = 'block';
+                ui.playerList.style.display = 'block';
+            }
+        } else if (type === 'gameStart') {
+            this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+            this.sequences = { red: 0, blue: 0, green: 0 };
+            document.getElementById('game-over-overlay').style.display = 'none';
+            document.getElementById('play-again-waiting').style.display = 'none';
+
+            this.deck = data.deck;
+            this.hand = data.myHand;
+            this.myColor = data.myColor;
+            this.currentTurn = data.currentTurn;
+            this.teamCount = data.teamCount;
+            this.winTarget = data.winTarget || (this.teamCount === 3 ? 1 : 2);
+            this.colorNames = data.colorNames || {};
+            this.hintsEnabled = data.hintsEnabled || false;
+            this.started = true;
+            this.showGameScreen();
+
+            if (data.boardChips) {
+                this.chips = data.boardChips;
+                this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
+                this.renderBoard();
+                this.updateScoreUI();
+            }
+        } else if (type === 'move') {
+            this.applyOpponentMove(data);
+            this.currentTurn = data.nextTurn;
+            this.updateTurnUI();
+            if (this.isHost) this.broadcast('move', data, peerId);
+        } else if (type === 'sync') {
+            this.sequences = data.sequences;
+            this.updateScoreUI();
+            this.renderBoard();
+            if (data.winner) {
+                this.currentTurn = null;
+                this.showWinPopup(data.winner);
+            }
+        } else if (type === 'emoji') {
+            this.showEmojiFloat(data);
+            if (this.isHost) this.broadcast('emoji', data, peerId);
+        }
+    }
+
+
 
     connectToHost(hostID) {
         const newConn = this.peer.connect(hostID, { reliable: true });
@@ -373,20 +398,34 @@ class SequenceGame {
     }
 
     attemptReconnect() {
+        if (this._reconnecting) return;
+        this._reconnecting = true;
+
         const roomID = window.location.hash.substring(1);
-        if (roomID && (!this.hostConnection || !this.hostConnection.open)) {
-            setTimeout(() => {
-                console.log("Retrying connection...");
-                this.connectToHost(roomID);
-            }, 3000);
+        if (!roomID) {
+            this._reconnecting = false;
+            return;
         }
+
+        const ui = this.setupUI;
+        if (ui) ui.status.innerText = "Attempting to reconnect...";
+
+        // If the peer object is dead, restart the whole session flow
+        if (!this.peer || this.peer.destroyed || this.peer.disconnected) {
+            console.log("Peer state dead, restarting session...");
+            this.startSession(roomID, this.isHost);
+        } else if (!this.isHost) {
+            // Peer is alive, just re-connect to host
+            console.log("Retrying connection to host...");
+            this.connectToHost(roomID);
+        }
+
+        // Allow another attempt after a cooldown
+        setTimeout(() => { this._reconnecting = false; }, 5000);
     }
 
     setupConnection(conn) {
-        const statusEl = document.getElementById('setup-status');
-        const waitMsg = document.getElementById('waiting-msg');
-        const playerList = document.getElementById('player-list');
-        const startBtn = document.getElementById('start-game-btn');
+        const ui = this.setupUI;
 
         conn.on('open', () => {
             if (this.isHost) {
@@ -395,9 +434,11 @@ class SequenceGame {
                 }
                 this.connections[conn.peer] = conn;
 
-                statusEl.innerText = `${this.peers.length + 1} players connected`;
-                playerList.style.display = 'block';
-                startBtn.style.display = 'block';
+                if (ui) {
+                    ui.status.innerText = `${this.peers.length + 1} players connected`;
+                    ui.playerList.style.display = 'block';
+                    ui.startBtn.style.display = 'block';
+                }
 
                 this.sendTo(conn.peer, 'config', { teamCount: this.teamCount, hintsEnabled: this.hintsEnabled });
                 if (this.myName) {
