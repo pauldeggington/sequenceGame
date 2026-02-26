@@ -711,7 +711,7 @@ class SequenceGame {
     // STARTING THE GAME
     // ══════════════════════════════════════
     startGame() {
-        if (this.peers.length < 1) {
+        if (!this.isSinglePlayer && this.peers.length < 1) {
             alert('Need at least 2 players to start!');
             return;
         }
