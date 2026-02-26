@@ -743,9 +743,17 @@ header h1 {
     text-align: center;
 }
 
+.footer-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    margin-top: 10px;
+}
+
 /* Game log */
 #game-log {
-    flex-shrink: 0;
+    flex: 0 0 80%;
     height: 44px;
     overflow-y: auto;
     font-size: 1.1rem;
@@ -930,8 +938,22 @@ header h1 {
 
     #game-log {
         height: 48px;
+        flex: 1;
+        /* Allow log to take remain space on mobile */
+    }
+
+    .footer-row {
         margin-bottom: 25px;
-        /* Lift log up from the very bottom for better reach */
+        /* Lift row up from the very bottom for better reach */
+    }
+
+    #emoji-picker-container {
+        flex: 0 0 20%;
+    }
+
+    #emoji-trigger {
+        height: 48px;
+        /* Match mobile log height */
     }
 }
 
@@ -1093,11 +1115,20 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 
 /* Emoji Picker & Floats */
 #emoji-picker-container {
-    position: absolute;
-    bottom: 25px;
-    /* Lifted up for better reach */
-    right: 5px;
+    flex: 0 0 20%;
+    position: relative;
     z-index: 2000;
+}
+
+#emoji-trigger {
+    width: 100%;
+    height: 44px;
+    /* Match log height */
+    padding: 5px;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #emoji-menu {
