@@ -818,7 +818,13 @@ header h1 {
     box-shadow: 0 0 10px rgba(39, 174, 96, 0.4);
 }
 
-.jack-badge {
+.card.dead-card {
+    filter: grayscale(0.8) contrast(0.8);
+    opacity: 0.85;
+}
+
+.jack-badge,
+.dead-badge {
     position: absolute;
     bottom: -2px;
     right: -2px;
@@ -831,6 +837,12 @@ header h1 {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     z-index: 2;
 }
+
+.dead-badge {
+    background: #999;
+    /* using a gray for dead, since gold is for jacks, but keep overall style identical */
+}
+
 
 /* Jack hint bar */
 .jack-hint-panel {

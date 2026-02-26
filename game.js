@@ -154,6 +154,7 @@ class SequenceGame {
             turnIndicator: document.getElementById('turn-indicator'),
             logContent: document.getElementById('log-content'),
             jackHint: document.getElementById('jack-hint'),
+            deadHint: document.getElementById('dead-hint'),
             redScore: document.getElementById('red-score'),
             blueScore: document.getElementById('blue-score'),
             greenScore: document.getElementById('green-score'),
@@ -1071,9 +1072,25 @@ class SequenceGame {
         const ui = this.ui;
         if (!ui.hand) return;
         ui.hand.innerHTML = '';
+        let hasAnyDead = false;
         this.hand.forEach((card, index) => {
             const isOneEye = ONE_EYE.has(card);
             const isTwoEye = TWO_EYE.has(card);
+            let isDead = false;
+
+            if (!isOneEye && !isTwoEye && this.board && this.chips) {
+                isDead = true;
+                for (let r = 0; r < 10; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        if (this.board[r][c] === card && this.chips[r][c] === null) {
+                            isDead = false;
+                            break;
+                        }
+                    }
+                    if (!isDead) break;
+                }
+                if (isDead) hasAnyDead = true;
+            }
 
             const cardEl = document.createElement('div');
             cardEl.className = [
@@ -1081,6 +1098,7 @@ class SequenceGame {
                 this.selectedCardIndex === index ? 'selected' : '',
                 isOneEye ? 'jack-one-eye' : '',
                 isTwoEye ? 'jack-two-eye' : '',
+                isDead ? 'dead-card' : '',
                 animate ? 'dealing' : ''
             ].filter(Boolean).join(' ');
 
@@ -1097,6 +1115,11 @@ class SequenceGame {
                 const badge = document.createElement('span');
                 badge.className = 'jack-badge';
                 badge.innerText = isOneEye ? '👁' : '👁👁';
+                cardEl.appendChild(badge);
+            } else if (isDead) {
+                const badge = document.createElement('span');
+                badge.className = 'dead-badge';
+                badge.innerText = '💀';
                 cardEl.appendChild(badge);
             }
 
@@ -1181,12 +1204,16 @@ class SequenceGame {
 
             ui.hand.appendChild(cardEl);
         });
+        this.hasDeadCards = hasAnyDead;
+        this.updateJackHint();
     }
 
 
     updateJackHint() {
         const ui = this.ui;
         if (!ui.jackHint) return;
+
+        // Jack hints
         if (this.jackMode === 'one-eye') {
             ui.jackHint.innerText = "👁 One-Eyed Jack: Click an opponent's chip to remove it.";
             ui.jackHint.style.display = 'block';
@@ -1195,6 +1222,16 @@ class SequenceGame {
             ui.jackHint.style.display = 'block';
         } else {
             ui.jackHint.style.display = 'none';
+        }
+
+        // Dead card hints
+        if (ui.deadHint) {
+            if (this.hasDeadCards && this.currentTurn === this.myColor) {
+                ui.deadHint.innerText = "💀 Dead Card: Click to exchange for a new one.";
+                ui.deadHint.style.display = 'block';
+            } else {
+                ui.deadHint.style.display = 'none';
+            }
         }
     }
 
@@ -1744,6 +1781,7 @@ class SequenceGame {
             ui.turnIndicator.innerText = `⏳ ${name}'s turn…`;
         }
         ui.turnIndicator.style.color = mine ? "var(--gold)" : "var(--text)";
+        this.updateJackHint();
     }
 
     showTurnOverlay() {
