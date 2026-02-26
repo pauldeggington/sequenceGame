@@ -479,11 +479,9 @@ header h1 {
 }
 
 .glass-panel {
-    background: var(--glass);
     backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
     border-radius: 10px;
-    padding: 8px 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
