@@ -79,6 +79,7 @@ class SequenceGame {
 
         this.playerIDMap = {};   // peerId -> playerID
         this.playerStates = {};  // playerID -> { color, hand, name, peerId }
+        this.lastMove = null;    // { r, c } coordinate of last placement
 
         this.initSetup();
     }
@@ -328,6 +329,7 @@ class SequenceGame {
                     this.winTarget = s.winTarget;
                     this.hintsEnabled = s.hintsEnabled;
                     this.started = s.started;
+                    this.lastMove = s.lastMove || null;
 
                     const myState = this.playerStates[this.playerID];
                     if (myState) {
@@ -439,7 +441,8 @@ class SequenceGame {
                         colorNames: this.colorNames,
                         hintsEnabled: this.hintsEnabled,
                         boardChips: this.chips,
-                        sequences: this.sequences
+                        sequences: this.sequences,
+                        lastMove: this.lastMove
                     });
                     this.log(`♻️ ${name} reconnected.`);
                 }
@@ -478,6 +481,7 @@ class SequenceGame {
         } else if (type === 'gameStart') {
             this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
             this.sequences = { red: 0, blue: 0, green: 0 };
+            this.lastMove = data.lastMove || null;
             document.getElementById('game-over-overlay').style.display = 'none';
             document.getElementById('play-again-waiting').style.display = 'none';
 
@@ -495,11 +499,17 @@ class SequenceGame {
             if (data.boardChips) {
                 this.chips = data.boardChips;
                 this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
+                this.lastMove = data.lastMove || null;
                 this.renderBoard();
                 this.updateScoreUI();
             }
         } else if (type === 'move') {
             this.applyOpponentMove(data, peerId);
+            if (data.moveType === 'place') {
+                this.lastMove = { r: data.row, c: data.col };
+            } else if (data.moveType === 'remove') {
+                this.lastMove = null;
+            }
             this.currentTurn = data.nextTurn;
             this.updateTurnUI();
             if (this.isHost) {
@@ -607,7 +617,8 @@ class SequenceGame {
                             colorNames: this.colorNames,
                             hintsEnabled: this.hintsEnabled,
                             boardChips: this.chips, // Custom field for reconnect
-                            sequences: this.sequences
+                            sequences: this.sequences,
+                            lastMove: this.lastMove
                         });
                     }
                 }
@@ -735,6 +746,10 @@ class SequenceGame {
             };
         });
 
+        this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+        this.sequences = { red: 0, blue: 0, green: 0 };
+        this.lastMove = null;
+
         // Host setup
         const hostState = this.playerStates[this.playerID];
         this.hand = hostState.hand;
@@ -754,7 +769,8 @@ class SequenceGame {
                     teamCount: this.teamCount,
                     winTarget: this.winTarget,
                     colorNames: this.colorNames,
-                    hintsEnabled: this.hintsEnabled
+                    hintsEnabled: this.hintsEnabled,
+                    lastMove: this.lastMove
                 }, a.peerId);
             }
         });
@@ -923,7 +939,8 @@ class SequenceGame {
                         chipEl = document.createElement('div');
                         cell.appendChild(chipEl);
                     }
-                    const chipClass = `chip ${chip}`;
+                    const isLastMove = this.lastMove && this.lastMove.r === r && this.lastMove.c === c;
+                    const chipClass = `chip ${chip}${isLastMove ? ' last-move' : ''}`;
                     if (chipEl.className !== chipClass) chipEl.className = chipClass;
                 } else if (chipEl) {
                     chipEl.remove();
@@ -1108,6 +1125,11 @@ class SequenceGame {
 
         // Apply locally
         this.chips[r][c] = moveType === 'place' ? this.myColor : null;
+        if (moveType === 'place') {
+            this.lastMove = { r, c };
+        } else if (moveType === 'remove') {
+            this.lastMove = null;
+        }
 
         const drawnCard = this.deck.length > 0 ? this.deck.shift() : null;
         this.hand.splice(this.selectedCardIndex, 1);
@@ -1235,7 +1257,8 @@ class SequenceGame {
             teamCount: this.teamCount,
             winTarget: this.winTarget,
             hintsEnabled: this.hintsEnabled,
-            started: this.started
+            started: this.started,
+            lastMove: this.lastMove
         };
         localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(state));
     }
@@ -1346,6 +1369,11 @@ class SequenceGame {
         const { r, c, cardIndex, type, cardName } = bestMove;
 
         this.chips[r][c] = type === 'place' ? 'blue' : null;
+        if (type === 'place') {
+            this.lastMove = { r, c };
+        } else {
+            this.lastMove = null;
+        }
 
         const drawnCard = this.deck.length > 0 ? this.deck.shift() : null;
         hand.splice(cardIndex, 1);
