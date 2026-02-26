@@ -80,6 +80,7 @@ class SequenceGame {
         this.playerIDMap = {};   // peerId -> playerID
         this.playerStates = {};  // playerID -> { color, hand, name, peerId }
         this.lastMove = null;    // { r, c } coordinate of last placement
+        this.aiTurnTimeout = null;
 
         this.initSetup();
     }
@@ -1235,7 +1236,12 @@ class SequenceGame {
         if (this.isSinglePlayer && this.currentTurn) {
             const playerState = Object.values(this.playerStates).find(s => s.color === this.currentTurn);
             if (playerState && playerState.peerId && playerState.peerId.startsWith('COMPUTER_')) {
-                setTimeout(() => this.playAITurn(), 1500);
+                // Clear any existing timeout to prevent overlapping turns
+                if (this.aiTurnTimeout) clearTimeout(this.aiTurnTimeout);
+
+                this.aiTurnTimeout = setTimeout(() => {
+                    this.playAITurn();
+                }, 1000); // 1s thinking delay
             }
         }
     }
@@ -1349,10 +1355,18 @@ class SequenceGame {
     // AI LOGIC
     // ══════════════════════════════════════
     playAITurn() {
+        if (this.aiTurnTimeout) {
+            clearTimeout(this.aiTurnTimeout);
+            this.aiTurnTimeout = null;
+        }
+
         const colors = TEAM_COLORS.slice(0, this.teamCount);
         const myColor = this.currentTurn;
         const playerState = Object.values(this.playerStates).find(s => s.color === myColor);
         if (!playerState || !playerState.peerId || !playerState.peerId.startsWith('COMPUTER_')) return;
+
+        const name = (this.colorNames && this.colorNames[myColor]) || 'Computer';
+        this.log(`🤔 ${name} is thinking...`);
 
         const hand = playerState.hand;
 
@@ -1418,9 +1432,10 @@ class SequenceGame {
 
                 const rank = deadCard.slice(0, -1);
                 const suit = deadCard.slice(-1);
-                this.log(`♻️ AI exchanged dead card: ${rank + SUITS[suit]}`);
-                setTimeout(() => this.playAITurn(), 1500);
+                this.log(`♻️ ${name} exchanged dead card: ${rank + SUITS[suit]}`);
+                this.checkAndTriggerAITurn();
             } else {
+                this.log(`⚠ ${name} has no valid moves!`);
                 const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
                 this.currentTurn = colors[nextIdx];
                 this.updateTurnUI();
