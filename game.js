@@ -122,6 +122,7 @@ class SequenceGame {
             emojiMenu: document.getElementById('emoji-menu'),
             emojiFloatContainer: document.getElementById('emoji-float-container'),
             hintsToggle: document.getElementById('show-hints-toggle'),
+            backBtn: document.getElementById('setup-back-btn'),
         };
         const ui = this.ui;
         const renderSetupState = () => {
@@ -227,6 +228,7 @@ class SequenceGame {
                 ui.teamCfg.style.display = 'block';
                 ui.teamCfg.classList.add('single-player-setup');
                 ui.startBtn.style.display = 'block';
+                ui.backBtn.style.display = 'block';
 
                 // Allow team selection for 1v1 or 1v1v1
                 this.updateTeamLabels(ui.teamLabels);
@@ -239,6 +241,38 @@ class SequenceGame {
     initEventListeners() {
         const ui = this.ui;
         if (!ui) return;
+
+        if (ui.backBtn) {
+            ui.backBtn.addEventListener('click', () => {
+                if (this.isSinglePlayer) {
+                    this.isSinglePlayer = false;
+                } else if (this.isHost) {
+                    if (this.peer) {
+                        this.peer.destroy();
+                        this.peer = null;
+                    }
+                    window.location.hash = '';
+                    localStorage.removeItem('sequence_roomID');
+                    localStorage.removeItem('sequence_isHost');
+                }
+
+                // Reset UI state
+                ui.createSec.style.display = 'block';
+                ui.teamCfg.style.display = 'none';
+                ui.inviteBox.style.display = 'none';
+                ui.startBtn.style.display = 'none';
+                ui.playerList.style.display = 'none';
+                ui.backBtn.style.display = 'none';
+                ui.status.innerText = "Welcome to Very Wild Jacks";
+                ui.teamCfg.classList.remove('single-player-setup');
+
+                // Reset peers list
+                this.peers = [];
+                this.peerNames = {};
+                this.playerIDMap = {};
+                if (this.ui.playersEl) this.ui.playersEl.innerHTML = '';
+            });
+        }
 
         // Team buttons
         document.querySelectorAll('.team-btn').forEach(btn => {
@@ -381,6 +415,7 @@ class SequenceGame {
                     });
                 };
                 ui.teamCfg.style.display = 'block';
+                ui.backBtn.style.display = 'block';
                 this.updateTeamLabels(ui.teamLabels);
                 if (this.syncPlayers) this.syncPlayers();
 
