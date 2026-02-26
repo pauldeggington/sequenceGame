@@ -40,16 +40,39 @@ body {
     opacity: 0.25;
 }
 
-.bg-card {
+.bg-card,
+.bg-token {
     position: absolute;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    filter: blur(1px);
+    animation: float var(--duration) ease-in-out infinite var(--delay);
+}
+
+.bg-card {
     width: clamp(80px, 15vw, 150px);
     aspect-ratio: 2/3;
     background-size: cover;
     background-position: center;
     border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    filter: blur(1px);
-    animation: float var(--duration) ease-in-out infinite var(--delay);
+}
+
+.bg-token {
+    width: clamp(30px, 5vw, 60px);
+    height: clamp(30px, 5vw, 60px);
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.bg-token.red {
+    background: var(--red-chip);
+}
+
+.bg-token.blue {
+    background: var(--blue-chip);
+}
+
+.bg-token.green {
+    background: var(--green-chip);
 }
 
 @keyframes float {
@@ -96,8 +119,9 @@ body {
     min-width: 300px;
     text-align: center;
     padding: 30px 25px;
-    background: rgba(13, 27, 30, 0.9);
-    /* Solid-ish background for gamemode selection */
+    background: var(--bg-color);
+    /* Solid 100% opacity */
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
 }
 
 .setup-card h1 {
@@ -833,6 +857,10 @@ header h1 {
     overflow-y: auto;
     font-size: 1.1rem;
     padding: 0;
+    background: var(--bg-color);
+    /* Solid 100% opacity */
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
     scroll-snap-type: y mandatory;
     -ms-overflow-style: none;
     /* IE and Edge */

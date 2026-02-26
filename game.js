@@ -99,22 +99,30 @@ class SequenceGame {
             const cardEl = document.createElement('div');
             cardEl.className = 'bg-card';
             cardEl.style.backgroundImage = `url(${getCardImagePath(card)})`;
-
-            // Random placement
-            cardEl.style.left = `${Math.random() * 90}%`;
-            cardEl.style.top = `${Math.random() * 90}%`;
-
-            // Random animation properties
-            cardEl.style.setProperty('--duration', `${25 + Math.random() * 20}s`);
-            cardEl.style.setProperty('--delay', `${-Math.random() * 20}s`);
-            cardEl.style.setProperty('--rot', `${Math.random() * 360}deg`);
-            cardEl.style.setProperty('--x1', `${-50 + Math.random() * 100}px`);
-            cardEl.style.setProperty('--y1', `${-50 + Math.random() * 100}px`);
-            cardEl.style.setProperty('--x2', `${-50 + Math.random() * 100}px`);
-            cardEl.style.setProperty('--y2', `${-50 + Math.random() * 100}px`);
-
+            this.setRandomFloatingStyles(cardEl);
             bgContainer.appendChild(cardEl);
         }
+
+        const colors = ['red', 'blue', 'green'];
+        for (let i = 0; i < 12; i++) {
+            const tokenEl = document.createElement('div');
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            tokenEl.className = `bg-token ${color}`;
+            this.setRandomFloatingStyles(tokenEl);
+            bgContainer.appendChild(tokenEl);
+        }
+    }
+
+    setRandomFloatingStyles(el) {
+        el.style.left = `${Math.random() * 95}%`;
+        el.style.top = `${Math.random() * 95}%`;
+        el.style.setProperty('--duration', `${20 + Math.random() * 25}s`);
+        el.style.setProperty('--delay', `${-Math.random() * 20}s`);
+        el.style.setProperty('--rot', `${Math.random() * 360}deg`);
+        el.style.setProperty('--x1', `${-100 + Math.random() * 200}px`);
+        el.style.setProperty('--y1', `${-100 + Math.random() * 200}px`);
+        el.style.setProperty('--x2', `${-100 + Math.random() * 200}px`);
+        el.style.setProperty('--y2', `${-100 + Math.random() * 200}px`);
     }
 
     // ══════════════════════════════════════
