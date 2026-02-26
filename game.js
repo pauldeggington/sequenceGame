@@ -1193,6 +1193,10 @@ class SequenceGame {
         this.updateJackHint();
         this.checkSequences();
 
+        this.checkAndTriggerAITurn();
+    }
+
+    checkAndTriggerAITurn() {
         if (this.isSinglePlayer && this.currentTurn) {
             const playerState = Object.values(this.playerStates).find(s => s.color === this.currentTurn);
             if (playerState && playerState.peerId && playerState.peerId.startsWith('COMPUTER_')) {
@@ -1382,10 +1386,10 @@ class SequenceGame {
                 this.log(`♻️ AI exchanged dead card: ${rank + SUITS[suit]}`);
                 setTimeout(() => this.playAITurn(), 1500);
             } else {
-                this.log("⚠ Computer has no valid moves!");
                 const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
                 this.currentTurn = colors[nextIdx];
                 this.updateTurnUI();
+                this.checkAndTriggerAITurn();
             }
             return;
         }
@@ -1414,6 +1418,8 @@ class SequenceGame {
         this.renderBoard();
         this.updateTurnUI();
         this.checkSequences();
+
+        this.checkAndTriggerAITurn();
     }
 
     evaluateMove(r, c, type, color) {
