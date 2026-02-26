@@ -73,10 +73,11 @@ class SequenceGame {
         this.peers = [];         // connected peer IDs
         this.peerNames = {};     // peerId -> name
         this.myName = '';
-        this.started = false;
-        this.hintsEnabled = false;
-        this.hoveredCardIndex = null;
-        this.hands = {};         // Host saves all hands dealt for reconnects
+        this.playerID = localStorage.getItem('sequence_playerID') || genId(12);
+        localStorage.setItem('sequence_playerID', this.playerID);
+
+        this.playerIDMap = {};   // peerId -> playerID
+        this.playerStates = {};  // playerID -> { color, hand, name, peerId }
 
         this.initSetup();
     }
@@ -158,17 +159,24 @@ class SequenceGame {
         if (ui.nameInput) {
             ui.nameInput.addEventListener('input', () => {
                 this.myName = ui.nameInput.value.trim();
+                localStorage.setItem('sequence_playerName', this.myName);
                 if (this.isHost) {
                     this.syncPlayers();
-                } else if (this.sendName) {
-                    this.sendName(this.myName);
+                } else {
+                    this.sendJoin();
                 }
                 renderSetupState();
             });
+            const savedName = localStorage.getItem('sequence_playerName');
+            if (savedName) {
+                ui.nameInput.value = savedName;
+                this.myName = savedName;
+            }
         }
 
         // ── Actions Setup ──
         this.sendName = (name) => this.broadcast('name', name);
+        this.sendJoin = () => this.broadcast('join', { name: this.myName, playerID: this.playerID });
         this.sendConfig = (config) => this.broadcast('config', config);
         this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
         this.sendMove = (data) => this.broadcast('move', data);
@@ -288,6 +296,36 @@ class SequenceGame {
             this.peer.destroy();
         }
 
+        if (this.isHost) {
+            const savedStateStr = localStorage.getItem(`sequence_gameState_${roomId}`);
+            if (savedStateStr) {
+                try {
+                    const s = JSON.parse(savedStateStr);
+                    this.chips = s.chips;
+                    this.sequences = s.sequences;
+                    this.deck = s.deck;
+                    this.currentTurn = s.currentTurn;
+                    this.playerStates = s.playerStates;
+                    this.colorNames = s.colorNames;
+                    this.teamCount = s.teamCount;
+                    this.winTarget = s.winTarget;
+                    this.hintsEnabled = s.hintsEnabled;
+                    this.started = s.started;
+
+                    const myState = this.playerStates[this.playerID];
+                    if (myState) {
+                        this.hand = myState.hand;
+                        this.myColor = myState.color;
+                        // Map my peerId if it changed (though host uses roomId)
+                        myState.peerId = roomId;
+                    }
+                    console.log("Restored game state from localStorage");
+                } catch (e) {
+                    console.error("Failed to restore game state:", e);
+                }
+            }
+        }
+
         this.peer = new Peer(this.isHost ? roomId : undefined);
 
         // Connection watchdog: if we don't 'open' within 10s, try a hard restart
@@ -319,6 +357,11 @@ class SequenceGame {
                 ui.teamCfg.style.display = 'block';
                 this.updateTeamLabels(ui.teamLabels);
                 if (this.syncPlayers) this.syncPlayers();
+
+                if (this.started) {
+                    this.showGameScreen();
+                    this.log("🔄 Session resumed. Waiting for players to reconnect...");
+                }
             } else {
                 console.log("Attempting to join session:", roomId);
                 this.connectToHost(roomId);
@@ -359,7 +402,33 @@ class SequenceGame {
 
     handleData(type, data, peerId) {
         const ui = this.ui;
-        if (type === 'name') {
+        if (type === 'join') {
+            if (this.isHost) {
+                const { name, playerID } = data;
+                this.playerIDMap[peerId] = playerID;
+                this.peerNames[peerId] = name;
+
+                // Check for reconnection
+                if (this.started && this.playerStates[playerID]) {
+                    const state = this.playerStates[playerID];
+                    state.peerId = peerId;
+                    this.sendTo(peerId, 'gameStart', {
+                        deck: [...this.deck],
+                        myHand: state.hand,
+                        myColor: state.color,
+                        currentTurn: this.currentTurn,
+                        teamCount: this.teamCount,
+                        winTarget: this.winTarget,
+                        colorNames: this.colorNames,
+                        hintsEnabled: this.hintsEnabled,
+                        boardChips: this.chips,
+                        sequences: this.sequences
+                    });
+                    this.log(`♻️ ${name} reconnected.`);
+                }
+                this.syncPlayers();
+            }
+        } else if (type === 'name') {
             if (this.isHost) {
                 this.peerNames[peerId] = data;
                 this.syncPlayers();
@@ -413,10 +482,13 @@ class SequenceGame {
                 this.updateScoreUI();
             }
         } else if (type === 'move') {
-            this.applyOpponentMove(data);
+            this.applyOpponentMove(data, peerId);
             this.currentTurn = data.nextTurn;
             this.updateTurnUI();
-            if (this.isHost) this.broadcast('move', data, peerId);
+            if (this.isHost) {
+                this.broadcast('move', data, peerId);
+                this.saveGameState();
+            }
         } else if (type === 'sync') {
             this.sequences = data.sequences;
             this.updateScoreUI();
@@ -533,7 +605,7 @@ class SequenceGame {
                     ui.playerList.style.display = 'block';
                 }
                 if (this.myName) {
-                    this.sendName(this.myName);
+                    this.sendJoin();
                 }
             }
         });
@@ -615,43 +687,50 @@ class SequenceGame {
         const cardsPerPlayer = totalPlayers <= 2 ? 7 : totalPlayers <= 4 ? 6 : 5;
         this.winTarget = (totalPlayers > 2 && this.teamCount === 3) ? 1 : 2;
 
-        // Assign colors round-robin
         const assignments = [];
-        assignments.push({ peerId: null, color: colors[0] });
+        assignments.push({ peerId: null, playerID: this.playerID, color: colors[0], name: this.myName || 'Host' });
         this.peers.forEach((pid, i) => {
-            assignments.push({ peerId: pid, color: colors[(i + 1) % colors.length] });
+            assignments.push({
+                peerId: pid,
+                playerID: this.playerIDMap[pid] || 'unknown-' + pid,
+                color: colors[(i + 1) % colors.length],
+                name: this.peerNames[pid] || 'Player ' + (i + 2)
+            });
         });
 
         // Build color → name map
         this.colorNames = {};
         assignments.forEach(a => {
-            if (a.peerId) {
-                this.colorNames[a.color] = this.peerNames[a.peerId] || a.color;
-            } else {
-                this.colorNames[a.color] = this.myName || 'You';
-            }
+            this.colorNames[a.color] = a.name;
         });
 
-        // Deal hands
-        const hands = {};
+        // Deal hands and store in playerStates
+        this.playerStates = {};
         assignments.forEach(a => {
-            const key = a.peerId || 'host';
-            hands[key] = this.deck.splice(0, cardsPerPlayer);
+            const hand = this.deck.splice(0, cardsPerPlayer);
+            this.playerStates[a.playerID] = {
+                color: a.color,
+                hand: hand,
+                name: a.name,
+                peerId: a.peerId
+            };
         });
 
         // Host setup
-        this.hand = hands['host'];
-        this.myColor = colors[0];
+        const hostState = this.playerStates[this.playerID];
+        this.hand = hostState.hand;
+        this.myColor = hostState.color;
         this.currentTurn = colors[0];
         this.started = true;
 
         // Send to each peer
         assignments.forEach(a => {
             if (a.peerId) {
+                const pState = this.playerStates[a.playerID];
                 this.sendGameStart({
                     deck: [...this.deck],
-                    myHand: hands[a.peerId],
-                    myColor: a.color,
+                    myHand: pState.hand,
+                    myColor: pState.color,
                     currentTurn: colors[0],
                     teamCount: this.teamCount,
                     winTarget: this.winTarget,
@@ -1058,6 +1137,11 @@ class SequenceGame {
         this.hand.splice(this.selectedCardIndex, 1);
         if (drawnCard) this.hand.push(drawnCard);
 
+        // Update host state
+        if (this.isHost && this.playerStates[this.playerID]) {
+            this.playerStates[this.playerID].hand = [...this.hand];
+        }
+
         // Calculate next turn
         const colors = TEAM_COLORS.slice(0, this.teamCount);
         const myIdx = colors.indexOf(this.myColor);
@@ -1077,7 +1161,8 @@ class SequenceGame {
             moveType,
             drew: drawnCard !== null,
             nextTurn,
-            cardName
+            cardName,
+            newHand: this.hand // Send new hand for host tracking
         });
 
         this.selectedCardIndex = null;
@@ -1092,18 +1177,30 @@ class SequenceGame {
         this.checkSequences();
     }
 
-    applyOpponentMove(data) {
-        const { row, col, color, moveType, drew, cardName, nextTurn } = data;
+    applyOpponentMove(data, peerId) {
+        const { row, col, color, moveType, drew, cardName, nextTurn, newHand } = data;
+
+        if (this.isHost && peerId) {
+            const playerID = this.playerIDMap[peerId];
+            if (playerID && this.playerStates[playerID]) {
+                if (newHand) this.playerStates[playerID].hand = newHand;
+                else if (drew && this.deck.length > 0) {
+                    // Backwards compatibility if hand not sent
+                    this.deck.shift();
+                }
+            }
+        }
 
         if (moveType === 'exchange') {
-            if (drew && this.deck.length > 0) this.deck.shift();
+            if (drew && !newHand && this.deck.length > 0) this.deck.shift();
             const name = (this.colorNames && this.colorNames[color]) || color;
             this.log(`♻️ ${name} exchanged dead card: ${cardName}`);
+            if (this.isHost) this.saveGameState();
             return; // Turn continues for them
         }
 
         this.chips[row][col] = moveType === 'place' ? color : null;
-        if (drew && this.deck.length > 0) this.deck.shift();
+        if (drew && !newHand && this.deck.length > 0) this.deck.shift();
 
         const name = (this.colorNames && this.colorNames[color]) || color;
         const displayCard = cardName || `[${row},${col}]`;
@@ -1142,7 +1239,25 @@ class SequenceGame {
 
         if (updated && this.sendSync) {
             this.sendSync({ sequences: this.sequences, winner });
+            if (this.isHost) this.saveGameState();
         }
+    }
+
+    saveGameState() {
+        if (!this.isHost || !this.started || !this.currentRoomId) return;
+        const state = {
+            chips: this.chips,
+            sequences: this.sequences,
+            deck: this.deck,
+            currentTurn: this.currentTurn,
+            playerStates: this.playerStates,
+            colorNames: this.colorNames,
+            teamCount: this.teamCount,
+            winTarget: this.winTarget,
+            hintsEnabled: this.hintsEnabled,
+            started: this.started
+        };
+        localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(state));
     }
 
     countSequencesForColor(color) {
