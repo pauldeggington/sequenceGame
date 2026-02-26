@@ -1105,33 +1105,23 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 /* Sequence Formed Popup Styles */
 .sequence-popup-overlay {
     position: fixed;
-    top: 50px;
+    top: 0;
     left: 0;
     width: 100%;
-    height: auto;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
     z-index: 4000;
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     pointer-events: none;
-    /* Let clicks pass through */
-    animation: seq-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(4px);
+    animation: overlay-fade 0.3s ease;
 }
 
-.sequence-popup {
-    text-align: center;
-    padding: 15px 30px;
-    max-width: 350px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 2px solid var(--gold);
-    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
-}
-
-.sequence-popup h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    color: var(--gold);
-    margin: 0;
+.sequence-popup-overlay .turn-overlay-text {
+    animation: turn-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes seq-pop-in {

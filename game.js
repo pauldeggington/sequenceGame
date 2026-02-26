@@ -1593,17 +1593,15 @@ class SequenceGame {
 
         subtitle.innerHTML = `<span style="color: ${teamColors[color] || 'white'}; font-weight: bold;">${teamName} Team</span> completed a sequence!`;
 
-        // Remove existing animation and trigger reflow
-        overlay.style.animation = 'none';
-        overlay.offsetHeight; /* trigger reflow */
-        overlay.style.animation = null;
-
         overlay.style.display = 'flex';
+
+        // Vibrate if mobile
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
         clearTimeout(this._seqPopupTimer);
         this._seqPopupTimer = setTimeout(() => {
             overlay.style.display = 'none';
-        }, 3000);
+        }, 2000);
     }
 
     showEmojiFloat(emoji) {
