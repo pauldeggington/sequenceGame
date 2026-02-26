@@ -1358,6 +1358,9 @@ class SequenceGame {
         this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
         const allSequences = {};
 
+        const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
+        const newlyFormed = [];
+
         for (const color of colors) {
             const result = this.countSequencesForColor(color);
             allSequences[color] = result.sequences;
@@ -1371,20 +1374,22 @@ class SequenceGame {
             if (result.count > (this.sequences[color] || 0)) {
                 this.sequences[color] = result.count;
                 this.log(`🎉 ${color} formed sequence #${result.count}!`);
-                this.showSequencePopup(color);
+                newlyFormed.push(color);
                 updated = true;
             }
         }
 
         this.updateScoreUI();
 
-        const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
         const winner = colors.find(c => this.sequences[c] >= winTarget) || null;
 
         if (winner) {
             this.currentTurn = null;
             this.log(`🏆 ${winner} wins!`);
             this.showWinPopup(winner);
+        } else {
+            // Only show sequence popups if no one has won yet
+            newlyFormed.forEach(color => this.showSequencePopup(color));
         }
 
         if (updated && this.sendSync) {
