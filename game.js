@@ -85,7 +85,7 @@ class SequenceGame {
     // SETUP SCREEN
     // ══════════════════════════════════════
     initSetup() {
-        this.setupUI = {
+        this.ui = {
             status: document.getElementById('setup-status'),
             inviteBox: document.getElementById('invite-box'),
             inviteUrl: document.getElementById('invite-url'),
@@ -98,16 +98,35 @@ class SequenceGame {
             nameInput: document.getElementById('player-name'),
             createSec: document.getElementById('create-game-section'),
             createBtn: document.getElementById('create-game-btn'),
+            board: document.getElementById('game-board'),
+            hand: document.getElementById('player-hand'),
+            turnIndicator: document.getElementById('turn-indicator'),
+            logContent: document.getElementById('log-content'),
+            jackHint: document.getElementById('jack-hint'),
+            redScore: document.getElementById('red-score'),
+            blueScore: document.getElementById('blue-score'),
+            greenScore: document.getElementById('green-score'),
+            greenScoreWrap: document.getElementById('green-score-wrap'),
+            myTeamName: document.getElementById('my-team-name'),
+            gameOverOverlay: document.getElementById('game-over-overlay'),
+            winnerDisplay: document.getElementById('winner-text'),
+            playAgainWaiting: document.getElementById('play-again-waiting'),
+            playAgainBtn: document.getElementById('play-again-btn'),
+            turnOverlay: document.getElementById('turn-overlay'),
+            emojiTrigger: document.getElementById('emoji-trigger'),
+            emojiMenu: document.getElementById('emoji-menu'),
+            emojiFloatContainer: document.getElementById('emoji-float-container'),
+            hintsToggle: document.getElementById('show-hints-toggle'),
         };
-
+        const ui = this.ui;
         const renderSetupState = () => {
-            if (!this.setupUI.playersEl) return;
-            this.setupUI.playersEl.innerHTML = '';
+            if (!ui.playersEl) return;
+            ui.playersEl.innerHTML = '';
             const myDisplay = this.myName || 'You';
             const me = document.createElement('div');
             me.className = 'player-entry me';
             me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            this.setupUI.playersEl.appendChild(me);
+            ui.playersEl.appendChild(me);
 
             this.peers.forEach((pid, i) => {
                 const el = document.createElement('div');
@@ -118,7 +137,7 @@ class SequenceGame {
                     else peerName = `Player ${i + 2}`;
                 }
                 el.innerText = `👤 ${peerName}`;
-                this.setupUI.playersEl.appendChild(el);
+                ui.playersEl.appendChild(el);
             });
         };
 
@@ -134,9 +153,9 @@ class SequenceGame {
         };
 
         // Name input
-        if (this.setupUI.nameInput) {
-            this.setupUI.nameInput.addEventListener('input', () => {
-                this.myName = this.setupUI.nameInput.value.trim();
+        if (ui.nameInput) {
+            ui.nameInput.addEventListener('input', () => {
+                this.myName = ui.nameInput.value.trim();
                 if (this.isHost) {
                     this.syncPlayers();
                 } else if (this.sendName) {
@@ -160,22 +179,22 @@ class SequenceGame {
         const savedIsHost = localStorage.getItem('sequence_isHost');
 
         if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
-            this.setupUI.status.innerText = "Re-hosting room...";
+            ui.status.innerText = "Re-hosting room...";
             this.startSession(hashId, true);
         } else if (hashId) {
-            this.setupUI.status.innerText = "Joining room...";
+            ui.status.innerText = "Joining room...";
             this.startSession(hashId, false);
         } else if (savedRoomId && savedIsHost === 'true') {
-            this.setupUI.createSec.style.display = 'block';
-            this.setupUI.status.innerText = "Ready to start a game";
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Ready to start a game";
         } else {
-            this.setupUI.createSec.style.display = 'block';
-            this.setupUI.status.innerText = "Welcome to Very Wild Jacks";
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Welcome to Very Wild Jacks";
         }
 
-        this.setupUI.createBtn.addEventListener('click', () => {
+        ui.createBtn.addEventListener('click', () => {
             const newId = genId(8);
-            this.setupUI.status.innerText = "Creating room...";
+            ui.status.innerText = "Creating room...";
             this.startSession(newId, true);
         });
 
@@ -183,7 +202,7 @@ class SequenceGame {
     }
 
     initEventListeners() {
-        const ui = this.setupUI;
+        const ui = this.ui;
         if (!ui) return;
 
         // Team buttons
@@ -201,10 +220,9 @@ class SequenceGame {
         ui.startBtn.onclick = () => this.startGame();
 
         // Hint toggle
-        const hintToggle = document.getElementById('show-hints-toggle');
-        if (hintToggle) {
-            hintToggle.onchange = () => {
-                this.hintsEnabled = hintToggle.checked;
+        if (ui.hintsToggle) {
+            ui.hintsToggle.onchange = () => {
+                this.hintsEnabled = ui.hintsToggle.checked;
                 if (this.isHost) {
                     this.sendConfig({ hintsEnabled: this.hintsEnabled });
                 }
@@ -212,14 +230,13 @@ class SequenceGame {
         }
 
         // Play Again
-        const playAgainBtn = document.getElementById('play-again-btn');
-        if (playAgainBtn) {
-            playAgainBtn.onclick = () => {
+        if (ui.playAgainBtn) {
+            ui.playAgainBtn.onclick = () => {
                 if (this.isHost) {
                     this.startGame();
                 } else {
-                    document.getElementById('play-again-waiting').style.display = 'block';
-                    playAgainBtn.style.display = 'none';
+                    if (ui.playAgainWaiting) ui.playAgainWaiting.style.display = 'block';
+                    ui.playAgainBtn.style.display = 'none';
                 }
             };
         }
@@ -236,7 +253,7 @@ class SequenceGame {
     startSession(roomId, isHost) {
         this.isHost = isHost;
         this.currentRoomId = roomId;
-        const ui = this.setupUI;
+        const ui = this.ui;
         if (!ui) return;
 
         ui.createSec.style.display = 'none';
@@ -332,7 +349,7 @@ class SequenceGame {
     }
 
     handleData(type, data, peerId) {
-        const ui = this.setupUI;
+        const ui = this.ui;
         if (type === 'name') {
             if (this.isHost) {
                 this.peerNames[peerId] = data;
@@ -438,7 +455,7 @@ class SequenceGame {
             return;
         }
 
-        const ui = this.setupUI;
+        const ui = this.ui;
         if (ui) ui.status.innerText = "Attempting to reconnect...";
 
         // If the peer object is dead, restart the whole session flow
@@ -456,7 +473,7 @@ class SequenceGame {
     }
 
     setupConnection(conn) {
-        const ui = this.setupUI;
+        const ui = this.ui;
 
         conn.on('open', () => {
             if (this.isHost) {
@@ -638,9 +655,11 @@ class SequenceGame {
         this.turnOrder = assignments.map(a => a.color);
 
         // Host reset overlay
-        document.getElementById('game-over-overlay').style.display = 'none';
-        document.getElementById('play-again-waiting').style.display = 'none';
-        document.getElementById('play-again-btn').style.display = 'inline-block';
+        const ui = this.ui;
+        if (ui.gameOverOverlay) ui.gameOverOverlay.style.display = 'none';
+        if (ui.playAgainWaiting) ui.playAgainWaiting.style.display = 'none';
+        if (ui.playAgainBtn) ui.playAgainBtn.style.display = 'inline-block';
+
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.sequences = { red: 0, blue: 0, green: 0 };
 
@@ -648,56 +667,45 @@ class SequenceGame {
     }
 
     showGameScreen() {
-        document.getElementById('setup-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
+        const ui = this.ui; // Show UI for game
+        ui.setupScreen = document.getElementById('setup-screen');
+        ui.gameScreen = document.getElementById('game-screen');
+        ui.setupScreen.style.display = 'none';
+        ui.gameScreen.style.display = 'block';
 
-        // Show green score if 3 teams
-        if (this.teamCount >= 3) {
-            document.getElementById('green-score-wrap').style.display = 'inline';
-        }
+        if (this.teamCount >= 3) ui.greenScoreWrap.style.display = 'inline';
 
-        const teamEmojis = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
-        const myTeamEl = document.getElementById('my-team-name');
-        if (myTeamEl && this.myColor && teamEmojis[this.myColor]) {
-            myTeamEl.innerHTML = `<span class="team-tag ${this.myColor}" style="padding: 2px 8px;">${teamEmojis[this.myColor]}</span>`;
+        const teamLabelMap = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
+        if (ui.myTeamName && this.myColor) {
+            ui.myTeamName.innerHTML = `<span class="team-tag ${this.myColor}" style="padding: 2px 8px;">${teamLabelMap[this.myColor]}</span>`;
         }
 
         this.initGameElements();
         this.renderBoard();
-        this.renderHand(true); // Animate first deal
+        this.renderHand(true);
         this.updateTurnUI();
         this.updateScoreUI();
 
-        const myName = this.myName || 'Player 1';
-        this.log(`🎨 ${myName} are on team ${this.myColor.toUpperCase()}`);
-        this.log("🃏 Cards dealt! " + this.currentTurn + " goes first.");
+        this.log(`🎨 ${this.myName || 'Player'} on team ${this.myColor.toUpperCase()}`);
+        this.log(`🃏 Cards dealt! ${this.currentTurn} goes first.`);
     }
 
     initGameElements() {
-        this.boardEl = document.getElementById('game-board');
-        this.handEl = document.getElementById('player-hand');
-        this.turnIndicator = document.getElementById('turn-indicator');
-        this.logEl = document.getElementById('log-content');
-        this.jackHint = document.getElementById('jack-hint');
-
-        // Emoji UI initialization
-        const emojiTrigger = document.getElementById('emoji-trigger');
-        const emojiMenu = document.getElementById('emoji-menu');
-        if (emojiTrigger && emojiMenu) {
-            emojiTrigger.onclick = (e) => {
+        const ui = this.ui;
+        if (ui.emojiTrigger && ui.emojiMenu) {
+            ui.emojiTrigger.onclick = (e) => {
                 e.stopPropagation();
-                emojiMenu.style.display = emojiMenu.style.display === 'none' ? 'block' : 'none';
+                ui.emojiMenu.style.display = ui.emojiMenu.style.display === 'none' ? 'block' : 'none';
             };
             document.querySelectorAll('.emoji-opt').forEach(opt => {
                 opt.onclick = (e) => {
                     e.stopPropagation();
-                    const emoji = opt.innerText;
-                    this.sendEmoji(emoji);
-                    this.showEmojiFloat(emoji);
+                    this.sendEmoji(opt.innerText);
+                    this.showEmojiFloat(opt.innerText);
                 };
             });
-            document.addEventListener('click', () => emojiMenu.style.display = 'none');
-            emojiMenu.onclick = (e) => e.stopPropagation();
+            document.addEventListener('click', () => ui.emojiMenu.style.display = 'none');
+            ui.emojiMenu.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -723,36 +731,22 @@ class SequenceGame {
     // RENDERING
     // ══════════════════════════════════════
     renderBoard(forceFullRedraw = false) {
-        if (!this.boardEl) return;
+        const ui = this.ui;
+        if (!ui.board) return;
 
-        // If we already have the cells, just update them unless forced
-        if (!forceFullRedraw && this.boardEl.children.length === 100) {
+        if (!forceFullRedraw && ui.board.children.length === 100) {
             this.syncBoardState();
             return;
         }
 
-        this.boardEl.innerHTML = '';
+        ui.board.innerHTML = '';
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
                 const val = this.board[r][c];
                 const cell = document.createElement('div');
                 const chip = this.chips[r][c];
 
-                let highlight = '';
-                if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
-                if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
-
-                // Hint highlighting (Selected OR Hovered)
-                if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
-                    const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
-                    const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
-
-                    if ((val === selectedCard || val === hoveredCard) && !chip) {
-                        highlight = ' highlight-hint';
-                    }
-                }
-
-                cell.className = `cell${val === 'FREE' ? ' free' : ''}${highlight}`;
+                cell.className = this.calculateCellClass(r, c);
 
                 if (val === 'FREE') {
                     const freeEl = document.createElement('div');
@@ -760,15 +754,13 @@ class SequenceGame {
                     freeEl.innerText = '★';
                     cell.appendChild(freeEl);
                 } else {
-                    const rank = val.slice(0, -1);
                     const suit = val.slice(-1);
-
                     const simpleCard = document.createElement('div');
                     simpleCard.className = `cell-card-simple ${suit === 'H' || suit === 'D' ? 'red-suit' : 'black-suit'}`;
 
                     const rankEl = document.createElement('div');
                     rankEl.className = 'simple-rank';
-                    rankEl.innerText = rank;
+                    rankEl.innerText = val.slice(0, -1);
 
                     const suitEl = document.createElement('div');
                     suitEl.className = 'simple-suit';
@@ -786,38 +778,38 @@ class SequenceGame {
                 }
 
                 cell.onclick = () => this.handleCellClick(r, c);
-                this.boardEl.appendChild(cell);
+                ui.board.appendChild(cell);
             }
         }
     }
 
-    syncBoardState() {
-        const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
-        const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
+    calculateCellClass(r, c) {
+        const val = this.board[r][c];
+        const chip = this.chips[r][c];
+        let highlight = '';
 
+        if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
+        if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
+
+        if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
+            const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
+            const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
+            if ((val === selectedCard || val === hoveredCard) && !chip) highlight = ' highlight-hint';
+        }
+
+        return `cell${val === 'FREE' ? ' free' : ''}${highlight}`;
+    }
+
+    syncBoardState() {
+        const ui = this.ui;
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
-                const cell = this.boardEl.children[r * 10 + c];
-                const val = this.board[r][c];
+                const cell = ui.board.children[r * 10 + c];
                 const chip = this.chips[r][c];
 
-                // 1. Sync Highlights
-                let highlight = '';
-                if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
-                if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
+                const targetClass = this.calculateCellClass(r, c);
+                if (cell.className !== targetClass) cell.className = targetClass;
 
-                if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
-                    if ((val === selectedCard || val === hoveredCard) && !chip) {
-                        highlight = ' highlight-hint';
-                    }
-                }
-
-                const baseClass = val === 'FREE' ? 'cell free' : 'cell';
-                if (cell.className !== baseClass + highlight) {
-                    cell.className = baseClass + highlight;
-                }
-
-                // 2. Sync Chips
                 let chipEl = cell.querySelector('.chip');
                 if (chip) {
                     if (!chipEl) {
@@ -825,9 +817,7 @@ class SequenceGame {
                         cell.appendChild(chipEl);
                     }
                     const chipClass = `chip ${chip}`;
-                    if (chipEl.className !== chipClass) {
-                        chipEl.className = chipClass;
-                    }
+                    if (chipEl.className !== chipClass) chipEl.className = chipClass;
                 } else if (chipEl) {
                     chipEl.remove();
                 }
@@ -836,8 +826,9 @@ class SequenceGame {
     }
 
     renderHand(animate = false) {
-        if (!this.handEl) return;
-        this.handEl.innerHTML = '';
+        const ui = this.ui;
+        if (!ui.hand) return;
+        ui.hand.innerHTML = '';
         this.hand.forEach((card, index) => {
             const isOneEye = ONE_EYE.has(card);
             const isTwoEye = TWO_EYE.has(card);
@@ -937,29 +928,31 @@ class SequenceGame {
                 }
             };
 
-            this.handEl.appendChild(cardEl);
+            ui.hand.appendChild(cardEl);
         });
     }
 
 
     updateJackHint() {
-        if (!this.jackHint) return;
+        const ui = this.ui;
+        if (!ui.jackHint) return;
         if (this.jackMode === 'one-eye') {
-            this.jackHint.innerText = "👁 One-Eyed Jack: Click an opponent's chip to remove it.";
-            this.jackHint.style.display = 'block';
+            ui.jackHint.innerText = "👁 One-Eyed Jack: Click an opponent's chip to remove it.";
+            ui.jackHint.style.display = 'block';
         } else if (this.jackMode === 'two-eye') {
-            this.jackHint.innerText = "👁👁 Two-Eyed Jack: Click any empty cell to place your chip.";
-            this.jackHint.style.display = 'block';
+            ui.jackHint.innerText = "👁👁 Two-Eyed Jack: Click any empty cell to place your chip.";
+            ui.jackHint.style.display = 'block';
         } else {
-            this.jackHint.style.display = 'none';
+            ui.jackHint.style.display = 'none';
         }
     }
 
     updateScoreUI() {
-        document.getElementById('red-score').innerText = this.sequences.red;
-        document.getElementById('blue-score').innerText = this.sequences.blue;
-        if (this.teamCount >= 3) {
-            document.getElementById('green-score').innerText = this.sequences.green;
+        const ui = this.ui;
+        if (ui.redScore) ui.redScore.innerText = this.sequences.red;
+        if (ui.blueScore) ui.blueScore.innerText = this.sequences.blue;
+        if (this.teamCount >= 3 && ui.greenScore) {
+            ui.greenScore.innerText = this.sequences.green;
         }
     }
 
@@ -1119,38 +1112,36 @@ class SequenceGame {
     // UI HELPERS
     // ══════════════════════════════════════
     updateTurnUI() {
-        if (!this.turnIndicator || !this.currentTurn) return;
+        const ui = this.ui;
+        if (!ui.turnIndicator || !this.currentTurn) return;
         const mine = this.currentTurn === this.myColor;
         if (mine) {
-            this.turnIndicator.innerText = "Your Turn!";
+            ui.turnIndicator.innerText = "Your Turn!";
             this.showTurnOverlay();
-            if (navigator.vibrate) {
-                navigator.vibrate(200);
-            }
+            if (navigator.vibrate) navigator.vibrate(200);
         } else {
             const name = (this.colorNames && this.colorNames[this.currentTurn]) || this.currentTurn;
-            this.turnIndicator.innerText = `⏳ ${name}'s turn…`;
+            ui.turnIndicator.innerText = `⏳ ${name}'s turn…`;
         }
-        this.turnIndicator.style.color = mine ? "var(--gold)" : "var(--text)";
+        ui.turnIndicator.style.color = mine ? "var(--gold)" : "var(--text)";
     }
 
     showTurnOverlay() {
-        const overlay = document.getElementById('turn-overlay');
-        if (!overlay) return;
-        overlay.style.display = 'flex';
+        const ui = this.ui;
+        if (!ui.turnOverlay) return;
+        ui.turnOverlay.style.display = 'flex';
         clearTimeout(this._overlayTimer);
         this._overlayTimer = setTimeout(() => {
-            overlay.style.display = 'none';
+            ui.turnOverlay.style.display = 'none';
         }, 1200);
     }
 
     showWinPopup(winner) {
-        const overlay = document.getElementById('game-over-overlay');
-        const text = document.getElementById('winner-text');
-        if (overlay && text) {
-            text.innerText = `${winner.toUpperCase()} TEAM WINS!`;
-            text.style.color = winner === 'red' ? '#ff7675' : (winner === 'blue' ? '#74b9ff' : '#55efc4');
-            overlay.style.display = 'flex';
+        const ui = this.ui;
+        if (ui.gameOverOverlay && ui.winnerDisplay) { // Note: winnerDisplay might be wrong ID based on view, let me check
+            ui.winnerDisplay.innerText = `${winner.toUpperCase()} TEAM WINS!`;
+            ui.winnerDisplay.style.color = winner === 'red' ? '#ff7675' : (winner === 'blue' ? '#74b9ff' : '#55efc4');
+            ui.gameOverOverlay.style.display = 'flex';
         }
     }
 
@@ -1178,36 +1169,32 @@ class SequenceGame {
     }
 
     showEmojiFloat(emoji) {
-        const container = document.getElementById('emoji-float-container');
-        if (!container) return;
+        const ui = this.ui;
+        if (!ui.emojiFloatContainer) return;
 
         const el = document.createElement('div');
         el.className = 'floating-emoji';
         el.innerText = emoji;
 
-        // Random horizontal position
-        const left = 20 + Math.random() * 60; // 20% to 80%
+        const left = 20 + Math.random() * 60;
         el.style.left = left + '%';
         el.style.bottom = '20px';
 
-        container.appendChild(el);
+        ui.emojiFloatContainer.appendChild(el);
         setTimeout(() => el.remove(), 3000);
     }
 
     log(msg) {
-        if (!this.logEl) return;
+        const ui = this.ui;
+        if (!ui.logContent) return;
         const el = document.createElement('div');
         el.className = 'log-entry';
         el.innerText = msg;
-        this.logEl.appendChild(el);
+        ui.logContent.appendChild(el);
 
-        // Auto-scroll to the new entry
         const container = document.getElementById('game-log');
         if (container) {
-            container.scrollTo({
-                top: container.scrollHeight,
-                behavior: 'smooth'
-            });
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         }
     }
 }
