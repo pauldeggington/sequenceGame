@@ -264,7 +264,16 @@ class SequenceGame {
 
         this.peer = new Peer(this.isHost ? roomId : undefined);
 
+        // Connection watchdog: if we don't 'open' within 10s, try a hard restart
+        const watchdog = setTimeout(() => {
+            if (this.peer && !this.peer.open && !this.peer.destroyed) {
+                console.warn("PeerJS open timed out, restarting session...");
+                this.startSession(roomId, this.isHost);
+            }
+        }, 10000);
+
         this.peer.on('open', (id) => {
+            clearTimeout(watchdog);
             if (this.isHost) {
                 ui.status.innerText = "Waiting for players...";
                 ui.inviteBox.style.display = 'block';
@@ -399,7 +408,22 @@ class SequenceGame {
 
 
     connectToHost(hostID) {
+        if (!this.peer || this.peer.destroyed) return;
+
+        console.log("Connecting to host:", hostID);
         const newConn = this.peer.connect(hostID, { reliable: true });
+
+        // Host handshake watchdog
+        const handshakeTimeout = setTimeout(() => {
+            if (newConn && !newConn.open) {
+                console.warn("Host connection handshake timed out, retrying...");
+                newConn.close();
+                this.attemptReconnect();
+            }
+        }, 8000);
+
+        newConn.on('open', () => clearTimeout(handshakeTimeout));
+
         this.hostConnection = newConn;
         this.setupConnection(newConn);
     }
