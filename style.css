@@ -26,6 +26,51 @@ body {
 }
 
 /* ══════════════════════════════════════════
+   BACKGROUND CARDS
+   ══════════════════════════════════════════ */
+.bg-cards {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.25;
+}
+
+.bg-card {
+    position: absolute;
+    width: clamp(80px, 15vw, 150px);
+    aspect-ratio: 2/3;
+    background-size: cover;
+    background-position: center;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    filter: blur(1px);
+    animation: float var(--duration) ease-in-out infinite var(--delay);
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0) rotate(var(--rot));
+    }
+
+    33% {
+        transform: translate(var(--x1), var(--y1)) rotate(calc(var(--rot) + 10deg));
+    }
+
+    66% {
+        transform: translate(var(--x2), var(--y2)) rotate(calc(var(--rot) - 10deg));
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(var(--rot));
+    }
+}
+
+/* ══════════════════════════════════════════
    SETUP SCREEN
    ══════════════════════════════════════════ */
 #setup-screen {

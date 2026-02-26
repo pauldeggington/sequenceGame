@@ -83,6 +83,38 @@ class SequenceGame {
         this.aiTurnTimeout = null;
 
         this.initSetup();
+        this.initBackgroundCards();
+    }
+
+    initBackgroundCards() {
+        const bgContainer = document.getElementById('bg-cards');
+        if (!bgContainer) return;
+
+        // Flatten board layout to get unique cards (excluding FREE)
+        const allCards = BOARD_LAYOUT.flat().filter(c => c !== 'FREE');
+        const cardCount = 15;
+
+        for (let i = 0; i < cardCount; i++) {
+            const card = allCards[Math.floor(Math.random() * allCards.length)];
+            const cardEl = document.createElement('div');
+            cardEl.className = 'bg-card';
+            cardEl.style.backgroundImage = `url(${getCardImagePath(card)})`;
+
+            // Random placement
+            cardEl.style.left = `${Math.random() * 90}%`;
+            cardEl.style.top = `${Math.random() * 90}%`;
+
+            // Random animation properties
+            cardEl.style.setProperty('--duration', `${25 + Math.random() * 20}s`);
+            cardEl.style.setProperty('--delay', `${-Math.random() * 20}s`);
+            cardEl.style.setProperty('--rot', `${Math.random() * 360}deg`);
+            cardEl.style.setProperty('--x1', `${-50 + Math.random() * 100}px`);
+            cardEl.style.setProperty('--y1', `${-50 + Math.random() * 100}px`);
+            cardEl.style.setProperty('--x2', `${-50 + Math.random() * 100}px`);
+            cardEl.style.setProperty('--y2', `${-50 + Math.random() * 100}px`);
+
+            bgContainer.appendChild(cardEl);
+        }
     }
 
     // ══════════════════════════════════════
