@@ -248,6 +248,13 @@ class SequenceGame {
         localStorage.setItem('sequence_roomID', roomId);
         localStorage.setItem('sequence_isHost', isHost ? 'true' : 'false');
 
+        // Dynamic Meta/Title update
+        document.title = `Very Wild Jacks | Room ${roomId}`;
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+            metaDesc.setAttribute('content', `Join my game of Very Wild Jacks! Room ID: ${roomId}. Play Sequence online with friends.`);
+        }
+
         const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
 
         // Cleanup old peer if exists
