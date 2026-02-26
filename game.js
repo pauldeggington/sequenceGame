@@ -1017,7 +1017,7 @@ class SequenceGame {
                     if (this.currentTurn === this.myColor && this.hintsEnabled) {
                         this.syncBoardState();
                     }
-                    if (ui.deckCountIndicator) ui.deckCountIndicator.style.display = 'none';
+                    if (ui.deckCountIndicator) ui.deckCountIndicator.style.visibility = 'visible';
                 }
             };
 
