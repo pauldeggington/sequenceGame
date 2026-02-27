@@ -1035,7 +1035,7 @@ class SequenceGame {
         if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
         if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
 
-        if (this.hintsEnabled && !this.jackMode && this.currentTurn === this.myColor) {
+        if (this.hintsEnabled && !this.jackMode) {
             const selectedCard = this.selectedCardIndex !== null ? this.hand[this.selectedCardIndex] : null;
             const hoveredCard = this.hoveredCardIndex !== null ? this.hand[this.hoveredCardIndex] : null;
             if ((val === selectedCard || val === hoveredCard) && !chip) highlight = ' highlight-hint';
@@ -1196,7 +1196,7 @@ class SequenceGame {
 
             cardEl.onpointerenter = () => {
                 this.hoveredCardIndex = index;
-                if (this.currentTurn === this.myColor && this.hintsEnabled) {
+                if (this.hintsEnabled) {
                     this.syncBoardState();
                 }
             };
@@ -1204,7 +1204,7 @@ class SequenceGame {
             cardEl.onpointerleave = () => {
                 if (this.hoveredCardIndex === index) {
                     this.hoveredCardIndex = null;
-                    if (this.currentTurn === this.myColor && this.hintsEnabled) {
+                    if (this.hintsEnabled) {
                         this.syncBoardState();
                     }
                 }
