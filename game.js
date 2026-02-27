@@ -927,7 +927,7 @@ class SequenceGame {
         }
 
         this.initGameElements();
-        this.renderBoard();
+        this.renderBoard(false, true);
         this.renderHand(true);
         this.updateTurnUI();
         this.updateScoreUI();
@@ -976,14 +976,14 @@ class SequenceGame {
     // ══════════════════════════════════════
     // RENDERING
     // ══════════════════════════════════════
-    renderBoard(forceFullRedraw = false) {
+    renderBoard(forceFullRedraw = false, animateEntrance = false) {
         const ui = this.ui;
         if (!ui.board) return;
 
         // Preserve the SVG if it exists
         const svg = ui.seqLines || document.getElementById('sequence-lines');
 
-        if (!forceFullRedraw && ui.board.querySelectorAll('.cell').length === 100) {
+        if (!forceFullRedraw && !animateEntrance && ui.board.querySelectorAll('.cell').length === 100) {
             this.syncBoardState();
             return;
         }
@@ -999,6 +999,13 @@ class SequenceGame {
                 const chip = this.chips[r][c];
 
                 cell.className = `cell ${this.calculateCellClass(r, c)}`;
+
+                if (animateEntrance) {
+                    cell.classList.add('board-enter');
+                    // Stagger delay: radiate outward from center
+                    const distFromCenter = Math.abs(r - 4.5) + Math.abs(c - 4.5);
+                    cell.style.setProperty('--enter-delay', `${distFromCenter * 0.03}s`);
+                }
 
                 if (val === 'FREE') {
                     const freeEl = document.createElement('div');
@@ -1116,7 +1123,8 @@ class SequenceGame {
                 isOneEye ? 'jack-one-eye' : '',
                 isTwoEye ? 'jack-two-eye' : '',
                 isDead ? 'dead-card' : '',
-                animate ? 'dealing' : ''
+                animate ? 'dealing' : '',
+                (this.newCardIndex === index) ? 'card-drawn' : ''
             ].filter(Boolean).join(' ');
 
             if (animate) {
@@ -1223,6 +1231,7 @@ class SequenceGame {
         });
         this.hasDeadCards = hasAnyDead;
         this.updateJackHint();
+        this.newCardIndex = null; // Reset after render
     }
 
 
@@ -1345,6 +1354,9 @@ class SequenceGame {
         this.jackMode = null;
         this.hoveredCardIndex = null;
         this.currentTurn = nextTurn;
+
+        // Mark the newly drawn card for animation (it's always appended at end)
+        this.newCardIndex = drawnCard ? this.hand.length - 1 : null;
 
         this.renderHand();
         this.renderBoard();

@@ -667,6 +667,63 @@ header h1 {
     }
 }
 
+/* ── Board entrance animation ── */
+.cell.board-enter {
+    animation: board-card-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes board-card-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotateY(90deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotateY(0deg);
+    }
+}
+
+/* ── Hand card dealing animation ── */
+.card.dealing {
+    animation: card-deal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes card-deal {
+    0% {
+        opacity: 0;
+        transform: translateY(40px) scale(0.7);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Newly drawn card animation ── */
+.card.card-drawn {
+    animation: card-draw-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes card-draw-in {
+    0% {
+        opacity: 0;
+        transform: translateX(60px) scale(0.6) rotate(15deg);
+    }
+
+    60% {
+        opacity: 1;
+        transform: translateX(-4px) scale(1.05) rotate(-2deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1) rotate(0deg);
+    }
+}
+
 /* ── Chips – ROUND ── */
 .chip {
     width: 55%;
