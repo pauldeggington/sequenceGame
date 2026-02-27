@@ -83,12 +83,13 @@ class SequenceGame {
         this.aiTurnTimeout = null;
         this.exchangedThisTurn = false;
         this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
+        this.lockedSequences = []; // { color, cells: [{r,c},...] }
 
         this.initSetup();
         this.initBackgroundCards();
 
         window.addEventListener('resize', () => {
-            if (this.started) this.checkSequences();
+            if (this.started) this.redrawSequenceLines();
         });
     }
 
@@ -421,6 +422,7 @@ class SequenceGame {
                     this.started = s.started;
                     this.lastMove = s.lastMove || null;
                     this.sequenceGrid = s.sequenceGrid || Array(10).fill(null).map(() => Array(10).fill(false));
+                    this.lockedSequences = s.lockedSequences || [];
 
                     const myState = this.playerStates[this.playerID];
                     if (myState) {
@@ -535,6 +537,7 @@ class SequenceGame {
                         boardChips: this.chips,
                         sequences: this.sequences,
                         sequenceGrid: this.sequenceGrid,
+                        lockedSequences: this.lockedSequences,
                         lastMove: this.lastMove
                     });
                     this.log(`♻️ ${name} reconnected.`);
@@ -575,6 +578,7 @@ class SequenceGame {
             this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
             this.sequences = { red: 0, blue: 0, green: 0 };
             this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
+            this.lockedSequences = [];
             this.lastMove = data.lastMove || null;
             if (this.ui && this.ui.seqLines) this.ui.seqLines.innerHTML = '';
             document.getElementById('game-over-overlay').style.display = 'none';
@@ -595,6 +599,7 @@ class SequenceGame {
                 this.chips = data.boardChips;
                 this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
                 this.sequenceGrid = data.sequenceGrid || Array(10).fill(null).map(() => Array(10).fill(false));
+                this.lockedSequences = data.lockedSequences || [];
                 this.lastMove = data.lastMove || null;
                 this.renderBoard();
                 this.updateScoreUI();
@@ -615,8 +620,10 @@ class SequenceGame {
         } else if (type === 'sync') {
             this.sequences = data.sequences;
             if (data.sequenceGrid) this.sequenceGrid = data.sequenceGrid;
+            if (data.lockedSequences) this.lockedSequences = data.lockedSequences;
             this.updateScoreUI();
             this.renderBoard();
+            this.redrawSequenceLines();
             if (data.winner) {
                 this.currentTurn = null;
                 this.showWinPopup(data.winner);
@@ -718,6 +725,7 @@ class SequenceGame {
                             hintsEnabled: this.hintsEnabled,
                             boardChips: this.chips, // Custom field for reconnect
                             sequences: this.sequences,
+                            lockedSequences: this.lockedSequences,
                             lastMove: this.lastMove
                         });
                     }
@@ -861,6 +869,7 @@ class SequenceGame {
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.sequences = { red: 0, blue: 0, green: 0 };
         this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
+        this.lockedSequences = [];
         this.lastMove = null;
         if (this.ui && this.ui.seqLines) this.ui.seqLines.innerHTML = '';
 
@@ -1399,26 +1408,35 @@ class SequenceGame {
         let updated = false;
         const colors = TEAM_COLORS.slice(0, this.teamCount);
 
-        // Reset and recalculate grid IMMEDIATELY to prevent race conditions with One-Eyed Jacks
+        // Rebuild sequenceGrid from locked sequences
         this.sequenceGrid = Array(10).fill(null).map(() => Array(10).fill(false));
-        const allSequences = {};
+        this.lockedSequences.forEach(ls => {
+            ls.cells.forEach(cell => {
+                this.sequenceGrid[cell.r][cell.c] = true;
+            });
+        });
 
         const winTarget = this.winTarget || (this.teamCount === 3 ? 1 : 2);
         const newlyFormed = [];
 
         for (const color of colors) {
+            const lockedCount = this.lockedSequences.filter(ls => ls.color === color).length;
             const result = this.countSequencesForColor(color);
-            allSequences[color] = result.sequences;
 
-            result.sequences.forEach(seq => {
-                seq.forEach(cell => {
-                    this.sequenceGrid[cell.r][cell.c] = true;
+            // Only newly found sequences (beyond what's locked) are new
+            const newSeqs = result.sequences.slice(lockedCount);
+
+            if (newSeqs.length > 0) {
+                // Lock new sequences permanently
+                newSeqs.forEach(seq => {
+                    this.lockedSequences.push({ color, cells: seq });
+                    seq.forEach(cell => {
+                        this.sequenceGrid[cell.r][cell.c] = true;
+                    });
                 });
-            });
 
-            if (result.count > (this.sequences[color] || 0)) {
-                this.sequences[color] = result.count;
-                this.log(`🎉 ${color} formed sequence #${result.count}!`);
+                this.sequences[color] = this.lockedSequences.filter(ls => ls.color === color).length;
+                this.log(`🎉 ${color} formed sequence #${this.sequences[color]}!`);
                 newlyFormed.push(color);
                 updated = true;
             }
@@ -1438,19 +1456,21 @@ class SequenceGame {
         }
 
         if (updated && this.sendSync) {
-            this.sendSync({ sequences: this.sequences, winner, sequenceGrid: this.sequenceGrid });
+            this.sendSync({ sequences: this.sequences, winner, sequenceGrid: this.sequenceGrid, lockedSequences: this.lockedSequences });
             if (this.isHost) this.saveGameState();
         }
 
-        // Delayed UI line drawing only
+        // Delayed UI line drawing from locked sequences only
+        this.redrawSequenceLines();
+    }
+
+    redrawSequenceLines() {
         setTimeout(() => {
             if (this.ui.seqLines) {
                 this.ui.seqLines.innerHTML = '';
-                for (const color of colors) {
-                    if (allSequences[color]) {
-                        allSequences[color].forEach(seq => this.drawSequenceLine(seq, color));
-                    }
-                }
+                this.lockedSequences.forEach(ls => {
+                    this.drawSequenceLine(ls.cells, ls.color);
+                });
             }
         }, 150);
     }
@@ -1469,7 +1489,8 @@ class SequenceGame {
             hintsEnabled: this.hintsEnabled,
             started: this.started,
             lastMove: this.lastMove,
-            sequenceGrid: this.sequenceGrid
+            sequenceGrid: this.sequenceGrid,
+            lockedSequences: this.lockedSequences
         };
         localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(state));
     }
@@ -1482,8 +1503,15 @@ class SequenceGame {
             row.map((cell, c) => this.board[r][c] === 'FREE' ? color : cell)
         );
 
-        let foundSequences = []; // Array of [{r, c}, ...]
+        // foundSequences is initialized below after pre-seeding locked sequences
         let usedInSequence = Array(10).fill(null).map(() => Array(10).fill(false));
+
+        // Pre-seed with already-locked sequences for this color
+        const lockedForColor = (this.lockedSequences || []).filter(ls => ls.color === color);
+        lockedForColor.forEach(ls => {
+            ls.cells.forEach(cell => { usedInSequence[cell.r][cell.c] = true; });
+        });
+        let foundSequences = lockedForColor.map(ls => ls.cells); // Start with locked
 
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
