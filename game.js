@@ -128,6 +128,7 @@ class SequenceGame {
         this.jackMode = null;
         this.teamCount = 2;
         this.peers = [];         // connected peer IDs
+        this.allPeers = [];      // full peer list including self (for rank calc)
         this.peerNames = {};     // peerId -> name
         this.playerIDMap = {};   // peerId -> playerID
         this.myName = localStorage.getItem('sequence_playerName') || '';
@@ -148,6 +149,7 @@ class SequenceGame {
                 this.broadcast('players_sync', {
                     hostName: this.myName,
                     peers: this.peers,
+                    allPeers: [this.peer.id, ...this.peers], // Include host as first in list
                     peerNames: this.peerNames
                 });
             }
@@ -400,8 +402,10 @@ class SequenceGame {
                 setTimeout(() => this.attemptReconnect(), 5000);
             } else {
                 if (err.type === 'identity-taken') {
-                    ui.status.innerText = "ID Taken. Re-initializing...";
-                    setTimeout(() => this.startSession(roomId, true), 3000);
+                    console.warn("Identity taken (ID already exists on network). Switching to client mode.");
+                    this.isHost = false;
+                    ui.status.innerText = "Joining existing room...";
+                    setTimeout(() => this.startSession(roomId, false), 1000);
                 }
             }
         });
@@ -461,6 +465,7 @@ class SequenceGame {
             if (!this.isHost) {
                 this.peers = data.peers.filter(id => id !== this.peer.id);
                 if (!this.peers.includes('HOST')) this.peers.unshift('HOST');
+                this.allPeers = data.allPeers || [];
                 this.peerNames = data.peerNames;
                 this.peerNames['HOST'] = data.hostName ? data.hostName + " (Host)" : "Host";
                 if (this.syncPlayers) this.syncPlayers(); // triggers renderstate
@@ -624,11 +629,13 @@ class SequenceGame {
                 takeoverBtn.onclick = () => this.takeOverAsHost();
 
                 // AUTOMATIC TAKEOVER LOGIC
-                // Sort peers alphabetically (excluding HOST) to find deterministic order
-                const otherPeers = [...this.peers].filter(p => p !== 'HOST').sort();
+                // Use the full peer list (including self) to find deterministic order
+                // Sort all peers alphabetically (excluding the old "HOST" string)
+                const otherPeers = [...this.allPeers].filter(p => p !== 'HOST' && p !== '').sort();
                 const myRank = otherPeers.indexOf(this.peer.id);
 
-                // Staggered takeover: Rank 0 waits ~15s (3 attempts), Rank 1 waits ~30s (6 attempts), etc.
+                // Staggered takeover: Successor 0 waits ~15s (3 attempts), Successor 1 waits ~30s (6 attempts), etc.
+                // We exclude the first person in sorted list if it matches known old host (already handled by roomID logic)
                 const attemptsToWait = (myRank + 1) * 3;
 
                 if (myRank !== -1 && this._reconnectAttempts >= attemptsToWait) {
