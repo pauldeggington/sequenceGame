@@ -549,6 +549,20 @@ class SequenceGame {
             this.showGameScreen();
 
             if (data.boardChips) {
+                // Check if game already ended upon reconnection sync
+                const colors = TEAM_COLORS.slice(0, data.teamCount || this.teamCount);
+                const winTarget = data.winTarget || (colors.length === 3 ? 1 : 2);
+                const winner = colors.find(c => (data.sequences && data.sequences[c] >= winTarget)) || null;
+
+                if (winner) {
+                    console.log("Joined a finished game. Redirecting to home...");
+                    localStorage.removeItem('sequence_roomID');
+                    localStorage.removeItem('sequence_isHost');
+                    window.location.hash = '';
+                    window.location.reload();
+                    return;
+                }
+
                 this.chips = data.boardChips;
                 this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
                 this.sequenceGrid = data.sequenceGrid || Array(10).fill(null).map(() => Array(10).fill(false));
