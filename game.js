@@ -567,6 +567,11 @@ class SequenceGame {
         } else if (type === 'hostStateBackup') {
             if (!this.isHost) {
                 this.hostStateBackup = data;
+                // Persistent backup for takeover stability
+                const roomID = window.location.hash.substring(1);
+                if (roomID && data) {
+                    localStorage.setItem(`sequence_gameState_${roomID}`, JSON.stringify(data));
+                }
             }
         }
 
@@ -656,6 +661,8 @@ class SequenceGame {
                 // Staggered takeover: Successor 0 waits ~15s (3 attempts), Successor 1 waits ~30s (6 attempts), etc.
                 const attemptsToWait = (myRank + 1) * 3;
 
+                console.log(`Successor Rank: ${myRank}. Attempts: ${this._reconnectAttempts}/${attemptsToWait}`);
+
                 if (myRank !== -1 && this._reconnectAttempts >= attemptsToWait) {
                     console.log(`Auto-takeover triggered (Rank: ${myRank}, ID: ${currentId}, Attempt: ${this._reconnectAttempts})`);
                     this.takeOverAsHost();
@@ -684,8 +691,8 @@ class SequenceGame {
         }
 
 
-        // Allow another attempt after a faster cooldown
-        setTimeout(() => { this._reconnecting = false; }, 3000);
+        // Allow another attempt after a very short cooldown to prevent stalling
+        setTimeout(() => { this._reconnecting = false; }, 500);
     }
 
     takeOverAsHost() {
