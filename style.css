@@ -1411,6 +1411,7 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 #emoji-menu {
     position: absolute;
     bottom: 55px;
+    right: 50px;
     /* Added some space above the button */
     left: 0;
     width: 100%;
