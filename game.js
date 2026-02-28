@@ -8,6 +8,13 @@
 
 // Networking now uses PeerJS loaded via <script> tag in index.html
 
+// Safari/iOS performance optimization
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || /CriOS/i.test(navigator.userAgent);
+if (isIOS || isSafari) {
+    document.body.classList.add('reduced-fx');
+}
+
 // ── Constants ─────────────────────────────────────────────────
 const BOARD_LAYOUT = [
     ["FREE", "2S", "3S", "4S", "5S", "6S", "7S", "8S", "9S", "FREE"],
