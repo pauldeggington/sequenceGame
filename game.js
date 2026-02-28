@@ -622,6 +622,21 @@ class SequenceGame {
             if (this._reconnectAttempts > 1 && takeoverBtn && this.hostStateBackup) {
                 takeoverBtn.style.display = 'inline-block';
                 takeoverBtn.onclick = () => this.takeOverAsHost();
+
+                // AUTOMATIC TAKEOVER LOGIC
+                // Sort peers alphabetically (excluding HOST) to find deterministic order
+                const otherPeers = [...this.peers].filter(p => p !== 'HOST').sort();
+                const myRank = otherPeers.indexOf(this.peer.id);
+
+                // Staggered takeover: Rank 0 waits ~15s (3 attempts), Rank 1 waits ~30s (6 attempts), etc.
+                const attemptsToWait = (myRank + 1) * 3;
+
+                if (myRank !== -1 && this._reconnectAttempts >= attemptsToWait) {
+                    console.log(`Auto-takeover triggered (Rank: ${myRank}, Attempt: ${this._reconnectAttempts})`);
+                    this.takeOverAsHost();
+                } else if (myRank !== -1) {
+                    timerEl.innerText += ` (Auto-takeover in ${attemptsToWait - this._reconnectAttempts}...)`;
+                }
             }
         }
 
