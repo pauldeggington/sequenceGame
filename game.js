@@ -113,6 +113,7 @@ class SequenceGame {
             winnerDisplay: document.getElementById('winner-text'),
             playAgainBtn: document.getElementById('play-again-btn'),
             playAgainWaiting: document.getElementById('play-again-waiting'),
+            homeBtn: document.getElementById('home-btn'),
             seqLines: document.getElementById('sequence-lines'),
             emojiTrigger: document.getElementById('emoji-trigger'),
             emojiMenu: document.getElementById('emoji-menu'),
@@ -193,6 +194,28 @@ class SequenceGame {
 
         // Start game button
         ui.startBtn.onclick = () => this.startGame();
+
+        // Play Again button
+        if (ui.playAgainBtn) {
+            ui.playAgainBtn.onclick = () => {
+                if (this.isHost) {
+                    this.startGame();
+                } else {
+                    ui.playAgainBtn.style.display = 'none';
+                    ui.playAgainWaiting.style.display = 'block';
+                }
+            };
+        }
+
+        // Home button
+        if (ui.homeBtn) {
+            ui.homeBtn.onclick = () => {
+                localStorage.removeItem('sequence_roomID');
+                localStorage.removeItem('sequence_isHost');
+                window.location.hash = '';
+                window.location.reload();
+            };
+        }
 
         // Team selection buttons
         document.querySelectorAll('.team-btn').forEach(btn => {
