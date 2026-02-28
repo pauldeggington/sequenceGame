@@ -269,12 +269,14 @@ class SequenceGame {
             ui.status.innerText = "Joining room...";
             localStorage.setItem('sequence_roomID', roomId);
             localStorage.setItem('sequence_isHost', 'false');
+            document.getElementById('setup-back-btn').style.display = 'block';
             this.startSession(roomId, false);
         } else if (savedRoomId && savedIsHost === 'true') {
             roomId = savedRoomId;
             window.location.hash = roomId;
             this.isHost = true;
             ui.status.innerText = "Re-hosting room...";
+            document.getElementById('setup-back-btn').style.display = 'block';
             this.startSession(roomId, true);
         } else {
             ui.status.innerText = "";
@@ -288,6 +290,7 @@ class SequenceGame {
                 ui.status.innerText = "Room created!";
                 localStorage.setItem('sequence_roomID', roomId);
                 localStorage.setItem('sequence_isHost', 'true');
+                document.getElementById('setup-back-btn').style.display = 'block';
                 this.startSession(roomId, true);
             };
 
@@ -305,6 +308,7 @@ class SequenceGame {
                 ui.teamCfg.style.display = 'block';
                 ui.teamCfg.classList.add('single-player-setup');
                 ui.startBtn.style.display = 'block';
+                document.getElementById('setup-back-btn').style.display = 'block';
 
                 // Allow team selection for 1v1 or 1v1v1
                 this.updateTeamLabels(ui.teamLabels);
