@@ -50,7 +50,7 @@ const PEER_CONFIG = {
     }
 };
 
-const MAX_RECONNECT_ATTEMPTS = 25; // ~2 minutes of attempts
+const MAX_RECONNECT_ATTEMPTS = 60; // ~5 minutes of attempts
 
 function getCardImagePath(card) {
     if (card === 'FREE') return 'card_images/back_light.png';
@@ -409,11 +409,11 @@ class SequenceGame {
                 setTimeout(() => this.attemptReconnect(), 5000);
             } else {
                 if (err.type === 'identity-taken') {
-                    if (this.isHost && this.hostStateBackup && this._takeoverRetries < 3) {
+                    if (this.isHost && this.hostStateBackup && this._takeoverRetries < 5) {
                         this._takeoverRetries++;
-                        console.warn(`Takeover ID taken. Retry ${this._takeoverRetries}/3...`);
+                        console.warn(`Takeover ID taken. Retry ${this._takeoverRetries}/5...`);
                         ui.status.innerText = `Takeover retry ${this._takeoverRetries}...`;
-                        setTimeout(() => this.startSession(roomId, true), 3000);
+                        setTimeout(() => this.startSession(roomId, true), 2000);
                     } else {
                         console.warn("Identity taken. Switching/Reverting to client mode.");
                         this.isHost = false;
@@ -658,8 +658,8 @@ class SequenceGame {
                 const otherPeers = [...this.allPeers].filter(p => p !== this.lastHostId && p !== 'HOST' && p !== '').sort();
                 const myRank = otherPeers.indexOf(currentId);
 
-                // Staggered takeover: Successor 0 waits ~15s (3 attempts), Successor 1 waits ~30s (6 attempts), etc.
-                const attemptsToWait = (myRank + 1) * 3;
+                // Staggered takeover: Successor 0 waits ~10s (2 attempts), Successor 1 waits ~20s (4 attempts), etc.
+                const attemptsToWait = (myRank + 1) * 2;
 
                 console.log(`Successor Rank: ${myRank}. Attempts: ${this._reconnectAttempts}/${attemptsToWait}`);
 
