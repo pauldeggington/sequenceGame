@@ -523,6 +523,31 @@ header h1 {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
+#host-dropped-warning {
+    margin-top: 8px;
+    padding: 10px;
+    background: rgba(192, 57, 43, 0.25);
+    border: 1px solid rgba(192, 57, 43, 0.5);
+    border-radius: 8px;
+    color: white;
+    max-width: 280px;
+    width: fit-content;
+    z-index: 100;
+}
+
+#host-reconnect-timer {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    opacity: 0.9;
+}
+
+#take-over-host-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    width: auto;
+}
+
 #connection-status {
     display: flex;
     align-items: center;
