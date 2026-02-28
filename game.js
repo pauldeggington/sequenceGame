@@ -240,6 +240,17 @@ class SequenceGame {
             };
         }
 
+        // Game title click -> home
+        const gameTitle = document.getElementById('game-title');
+        if (gameTitle) {
+            gameTitle.onclick = () => {
+                localStorage.removeItem('sequence_roomID');
+                localStorage.removeItem('sequence_isHost');
+                window.location.hash = '';
+                window.location.reload();
+            };
+        }
+
         // Team selection buttons
         document.querySelectorAll('.team-btn').forEach(btn => {
             btn.onclick = () => {
