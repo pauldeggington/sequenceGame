@@ -875,6 +875,11 @@ class SequenceGame {
         }
     }
 
+    sendEmoji(emoji) {
+        if (this.isSinglePlayer) return;
+        this.broadcast('emoji', emoji);
+    }
+
     updateTeamLabels(container) {
         const labels = TEAM_COLORS.slice(0, this.teamCount);
         const emojis = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };

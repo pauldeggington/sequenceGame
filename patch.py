@@ -199,6 +199,7 @@ for i, line in enumerate(lines):
         this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
         this.sendMove = (data) => this.broadcast('move', data);
         this.sendSync = (data) => this.broadcast('sync', data);
+        this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
 
         this.handleData = (type, data, peerId) => {
             if (type === 'name') {
