@@ -586,11 +586,11 @@ class SequenceGame {
         const handshakeTimeout = setTimeout(() => {
             this._connectingToHost = false;
             if (newConn && !newConn.open) {
-                console.warn("Host connection handshake timed out.");
+                console.warn("Host connection handshake timed out (5s). Retrying...");
                 newConn.close();
                 this.attemptReconnect();
             }
-        }, 10000);
+        }, 5000);
 
         newConn.on('open', () => {
             clearTimeout(handshakeTimeout);
@@ -600,8 +600,10 @@ class SequenceGame {
             if (warningEl) warningEl.style.display = 'none';
         });
 
-        newConn.on('error', () => {
+        newConn.on('error', (err) => {
+            console.error("Host connection error:", err);
             this._connectingToHost = false;
+            this.attemptReconnect();
         });
 
         newConn.on('close', () => {
@@ -682,8 +684,8 @@ class SequenceGame {
         }
 
 
-        // Allow another attempt after a cooldown
-        setTimeout(() => { this._reconnecting = false; }, 5000);
+        // Allow another attempt after a faster cooldown
+        setTimeout(() => { this._reconnecting = false; }, 3000);
     }
 
     takeOverAsHost() {
@@ -717,6 +719,8 @@ class SequenceGame {
         // Elevate to host
         this.isHost = true;
         this._reconnecting = false;
+        this._connectingToHost = false;
+        this._reconnectAttempts = 0;
         this._takeoverRetries = 0; // Reset retries
 
         // CRITICAL: Reset networking state for fresh host role
