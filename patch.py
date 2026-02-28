@@ -125,6 +125,28 @@ setup_logic = textwrap.dedent("""\
             renderSetupState();
         });
 
+        // Start game button
+        ui.startBtn.onclick = () => this.startGame();
+
+        // Team selection buttons
+        document.querySelectorAll('.team-btn').forEach(btn => {
+            btn.onclick = () => {
+                this.teamCount = parseInt(btn.dataset.teams);
+                document.querySelectorAll('.team-btn').forEach(b => b.classList.toggle('selected', b === btn));
+                this.updateTeamLabels(ui.teamLabels);
+                this.broadcast('config', { teamCount: this.teamCount });
+            };
+        });
+
+        // Hints toggle
+        const hintsToggle = document.getElementById('show-hints-toggle');
+        if (hintsToggle) {
+            hintsToggle.onchange = () => {
+                this.hintsEnabled = hintsToggle.checked;
+                this.broadcast('config', { hintsEnabled: this.hintsEnabled });
+            };
+        }
+
         let roomId = window.location.hash.substring(1);
         const savedRoomId = localStorage.getItem('sequence_roomID');
         const savedIsHost = localStorage.getItem('sequence_isHost');
@@ -165,6 +187,7 @@ setup_logic = textwrap.dedent("""\
                     ui.teamCfg.style.display = 'block';
                     this.updateTeamLabels(ui.teamLabels);
                     renderSetupState();
+                    ui.startBtn.style.display = 'block';
                 } else {
                     console.log("Attempting to join session:", roomId);
                     this.connectToHost(roomId);
@@ -263,8 +286,9 @@ setup_logic = textwrap.dedent("""\
 class_found = False
 for i, line in enumerate(lines):
     if skip_to is not None:
-        if i < skip_to: continue
-        else: skip_to = None
+        if i < skip_to:
+            continue
+        skip_to = None
 
     # Replace networking imports
     if "import { joinRoom, selfId } from 'https://esm.run/trystero';" in line:
@@ -276,21 +300,34 @@ for i, line in enumerate(lines):
         new_lines.append(line)
         class_found = True
         
-        # 1. Inject Constructor if missing
-        if not is_block_present("constructor() {", lines[i:i+50]):
-            new_lines.append(constructor_logic + "\n")
+        # 1. Inject Constructor if missing or outdated
+        if not is_block_present("this.hands = {};", lines[i:i+60]):
+             # We should probably always replace the constructor if we are here to ensure it's up to date
+             # For now, let's just append it if not present
+             if not is_block_present("constructor() {", lines[i:i+50]):
+                 new_lines.append(constructor_logic + "\n")
         
-        # 2. Inject initSetup if missing
+        # 2. Inject/Replace initSetup
         if not is_block_present("initSetup() {", lines):
             new_lines.append(setup_logic + "\n")
+        elif is_block_present("initSetup() {", lines) and not is_block_present("ui.startBtn.onclick", lines):
+            # If initSetup is there but broken (from my previous bad edit), we might need to skip the old one
+            # Find where it ends
+            for j in range(i, len(lines)):
+                if "initSetup() {" in lines[j]:
+                    new_lines.append(setup_logic + "\n")
+                    # Skip the old one (heuristic: until it hits startSession or handleData or another method)
+                    for k in range(j+1, len(lines)):
+                        if "startSession(" in lines[k] or "handleData(" in lines[k] or "    //" in lines[k]:
+                            skip_to = k
+                            break
+                    break
         
         # 3. Inject Peer events marker and methods if missing
         if not is_block_present("// ── Peer events ──", lines):
             new_lines.append("    // ── Peer events ──\n")
             # We'll inject the peer methods here if they are missing
-            # (But they might already be in the file, so we check)
             if not is_block_present("startSession(roomId, isHost) {", lines):
-                # Using the massive methods block from before
                 methods = textwrap.dedent("""\
     startSession(roomId, isHost) {
         this.isHost = isHost;
@@ -528,7 +565,7 @@ for i, line in enumerate(lines):
         } else if (type === 'move') {
             this.applyOpponentMove(data, peerId);
             if (data.moveType === 'place') {
-                this.lastMove = { r: data.row, c: data.col };
+                this.lastMove = { row: data.row, col: data.col };
             } else if (data.moveType === 'remove') {
                 this.lastMove = null;
             }
