@@ -24,6 +24,7 @@ body {
     font-family: 'Outfit', sans-serif;
     height: 100dvh;
     overflow: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* ══════════════════════════════════════════
@@ -244,6 +245,8 @@ body {
     font-family: 'Outfit', sans-serif;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 #player-name:focus {
@@ -268,6 +271,8 @@ body {
     text-align: center;
     cursor: text;
     outline: none;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 #invite-url:focus {
@@ -293,6 +298,7 @@ body {
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .team-btn:hover {
@@ -366,6 +372,7 @@ body {
     padding: 14px;
     font-size: 1.1rem;
     margin-top: 10px;
+    touch-action: manipulation;
 }
 
 .waiting-text {
@@ -581,6 +588,7 @@ header h1 {
     overflow: visible;
     min-width: 0;
     min-height: 0;
+    touch-action: manipulation;
 }
 
 .cell-card-img,
@@ -830,6 +838,7 @@ header h1 {
     position: relative;
     overflow: visible;
     border: none;
+    touch-action: manipulation;
 }
 
 .hand-card-img {
@@ -954,6 +963,8 @@ header h1 {
     /* IE and Edge */
     scrollbar-width: none;
     /* Firefox */
+    -webkit-overflow-scrolling: touch;
+    /* Momentum scrolling on iOS */
 }
 
 #game-log::-webkit-scrollbar {
@@ -1050,6 +1061,9 @@ header h1 {
     transition: all 0.2s;
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
     font-size: 0.9rem;
+    appearance: none;
+    -webkit-appearance: none;
+    touch-action: manipulation;
 }
 
 .premium-button:hover {
