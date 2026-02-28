@@ -1572,11 +1572,15 @@ class SequenceGame {
         const svg = document.getElementById('sequence-lines');
         if (!svg) return;
 
+        // Cache the SVG bounding rect once outside the loop to prevent layout thrashing
+        const boardRect = svg.getBoundingClientRect();
+
         const points = cells.map(pos => {
             const cell = document.getElementById(`cell-${pos.r}-${pos.c}`);
             if (!cell) return null;
 
-            const boardRect = svg.getBoundingClientRect();
+            // Getting bounding rect of each cell still causes slight layout thrashing, 
+            // but caching the boardRect above saves 5 iterations per sequence line.
             const rect = cell.getBoundingClientRect();
 
             const x = rect.left - boardRect.left + (rect.width / 2);
