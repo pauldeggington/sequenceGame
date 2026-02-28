@@ -130,7 +130,7 @@ class SequenceGame {
         this.peers = [];         // connected peer IDs
         this.peerNames = {};     // peerId -> name
         this.playerIDMap = {};   // peerId -> playerID
-        this.myName = '';
+        this.myName = localStorage.getItem('sequence_playerName') || '';
         this.started = false;
         this.hintsEnabled = false;
         this.hoveredCardIndex = null;
@@ -179,6 +179,7 @@ class SequenceGame {
         // Name input
         ui.nameInput.addEventListener('input', () => {
             this.myName = ui.nameInput.value.trim();
+            localStorage.setItem('sequence_playerName', this.myName);
             this.broadcast('name', this.myName);
             renderSetupState();
         });
@@ -324,6 +325,12 @@ class SequenceGame {
                     console.error("Failed to restore game state:", e);
                 }
             }
+        }
+
+        // Apply UI state if already started (e.g. during migration)
+        if (this.started) {
+            this.showGameScreen();
+            this.renderBoard();
         }
 
         this.peer = this.isHost ? new Peer(roomId, PEER_CONFIG) : new Peer(PEER_CONFIG);
@@ -639,22 +646,24 @@ class SequenceGame {
         if (!roomID) return;
 
         console.log("Taking over as host for room:", roomID);
+        if (this.ui.status) this.ui.status.innerText = "Migrating host...";
 
         // Hide warning UI
         const warningEl = document.getElementById('host-dropped-warning');
-        const takeoverBtn = document.getElementById('take-over-host-btn');
         if (warningEl) warningEl.style.display = 'none';
-        if (takeoverBtn) takeoverBtn.style.display = 'none';
 
         // Elevate to host
         this.isHost = true;
         this._reconnecting = false;
 
+        // Reset networking state for fresh host role
+        this.peers = [];
+        this.connections = {};
+
         // Ensure PeerJS disconnects from the old closed host properly
         if (this.peer && !this.peer.destroyed) {
             this.peer.destroy();
         }
-
 
         // Install our backup as the "saved game state" of the room
         localStorage.setItem(`sequence_gameState_${roomID}`, JSON.stringify(this.hostStateBackup));
@@ -684,28 +693,6 @@ class SequenceGame {
                     this.sendTo(conn.peer, 'name', this.myName);
                 }
 
-                if (this.started) {
-                    const knownName = this.peerNames[conn.peer] || conn.peer;
-                    const colorNamesEntry = Object.entries(this.colorNames).find(([color, name]) => name === knownName);
-                    let theirColor = colorNamesEntry ? colorNamesEntry[0] : null;
-
-                    if (theirColor && this.hands && this.hands[conn.peer]) {
-                        this.sendTo(conn.peer, 'gameStart', {
-                            deck: [...this.deck],
-                            myHand: this.hands[conn.peer],
-                            myColor: theirColor,
-                            currentTurn: this.currentTurn,
-                            teamCount: this.teamCount,
-                            winTarget: this.winTarget,
-                            colorNames: this.colorNames,
-                            hintsEnabled: this.hintsEnabled,
-                            boardChips: this.chips, // Custom field for reconnect
-                            sequences: this.sequences,
-                            lockedSequences: this.lockedSequences,
-                            lastMove: this.lastMove
-                        });
-                    }
-                }
                 if (!this.peerNames[conn.peer]) {
                     this.peerNames[conn.peer] = 'Player ' + (this.peers.length + 1);
                 }
