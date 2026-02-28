@@ -480,7 +480,15 @@ body {
     /* Prevent layout shifting when scrollbar appears */
 }
 
-#setup-screen,
+#setup-screen {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
 #game-screen {
     flex: 1;
     width: 100%;
@@ -494,7 +502,8 @@ body {
 .sidebar-wrapper {
     display: flex;
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     justify-content: center;
 }
 
@@ -1604,6 +1613,7 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 .sequence-line.green {
     stroke: #55efc4;
 }
+
 /* ------------------------------------------
    FOOTER
    ------------------------------------------ */
