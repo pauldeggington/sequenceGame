@@ -38,6 +38,18 @@ const ONE_EYE = new Set(['JH', 'JS']);
 const TWO_EYE = new Set(['JD', 'JC']);
 const TEAM_COLORS = ['red', 'blue', 'green'];
 
+const PEER_CONFIG = {
+    config: {
+        'iceServers': [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+        ]
+    }
+};
+
 function getCardImagePath(card) {
     if (card === 'FREE') return 'card_images/back_light.png';
     const rank = card.slice(0, -1);
@@ -197,93 +209,19 @@ class SequenceGame {
         const savedRoomId = localStorage.getItem('sequence_roomID');
         const savedIsHost = localStorage.getItem('sequence_isHost');
 
-        const initPeer = () => {
-            const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
-
-            const peerConfig = {
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' }
-                    ]
-                }
-            };
-            this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
-
-            this.peer.on('open', (id) => {
-                if (this.isHost) {
-                    ui.status.innerText = "Waiting for players...";
-                    ui.inviteBox.style.display = 'block';
-                    ui.inviteUrl.value = shareUrl;
-                    ui.inviteUrl.onmousedown = () => {
-                        ui.inviteUrl.select();
-                        navigator.clipboard.writeText(shareUrl).then(() => {
-                            const originalLabel = document.querySelector('.invite-label').innerText;
-                            document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
-                            document.querySelector('.invite-label').style.color = 'var(--gold)';
-                            setTimeout(() => {
-                                document.querySelector('.invite-label').innerText = originalLabel;
-                                document.querySelector('.invite-label').style.color = '';
-                            }, 2000);
-                        });
-                    };
-                    ui.teamCfg.style.display = 'block';
-                    this.updateTeamLabels(ui.teamLabels);
-                    renderSetupState();
-                    ui.startBtn.style.display = 'block';
-                } else {
-                    console.log("Attempting to join session:", roomId);
-                    this.connectToHost(roomId);
-                }
-            });
-
-            this.peer.on('disconnected', () => {
-                console.log("Disconnected from signaling server. Reconnecting...");
-                ui.status.innerText = "Connection lost. Reconnecting...";
-                this.peer.reconnect();
-            });
-
-            if (this.isHost) {
-                this.peer.on('connection', (conn) => {
-                    this.setupConnection(conn);
-                });
-            }
-
-            this.peer.on('error', (err) => {
-                console.error("PeerJS Network Error:", err);
-                if (!this.isHost) {
-                    if (err.type === 'peer-unavailable') {
-                        ui.status.innerText = "Host room not found. Retrying in 5s...";
-                    } else {
-                        ui.status.innerText = "Network error: " + err.type;
-                    }
-                    setTimeout(() => this.attemptReconnect(), 5000);
-                } else {
-                    if (err.type === 'identity-taken') {
-                        ui.status.innerText = "ID Taken. Re-initializing...";
-                        setTimeout(() => this.startSession(roomId, true), 3000);
-                    } else {
-                        ui.status.innerText = "Network Error: " + err.type;
-                    }
-                }
-            });
-        };
 
         if (roomId) {
             this.isHost = false;
             ui.status.innerText = "Joining room...";
             localStorage.setItem('sequence_roomID', roomId);
             localStorage.setItem('sequence_isHost', 'false');
-            initPeer();
+            this.startSession(roomId, false);
         } else if (savedRoomId && savedIsHost === 'true') {
             roomId = savedRoomId;
             window.location.hash = roomId;
             this.isHost = true;
             ui.status.innerText = "Re-hosting room...";
-            initPeer();
+            this.startSession(roomId, true);
         } else {
             ui.status.innerText = "";
             ui.createSec.style.display = "block";
@@ -296,7 +234,7 @@ class SequenceGame {
                 ui.status.innerText = "Room created!";
                 localStorage.setItem('sequence_roomID', roomId);
                 localStorage.setItem('sequence_isHost', 'true');
-                initPeer();
+                this.startSession(roomId, true);
             };
 
             ui.playSingleBtn.onclick = () => {
@@ -341,17 +279,14 @@ class SequenceGame {
             window.location.hash = roomId;
         }
 
-
         localStorage.setItem('sequence_roomID', roomId);
         localStorage.setItem('sequence_isHost', isHost ? 'true' : 'false');
-
-        // Dynamic Meta/Title update
         document.title = `Very Wild Jacks | Room ${roomId}`;
+
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
             metaDesc.setAttribute('content', `Join my game of Very Wild Jacks! Room ID: ${roomId}. Play Sequence online with friends.`);
         }
-
 
         const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
 
@@ -359,7 +294,6 @@ class SequenceGame {
         if (this.peer && !this.peer.destroyed) {
             this.peer.destroy();
         }
-
 
         if (this.isHost) {
             const savedStateStr = localStorage.getItem(`sequence_gameState_${roomId}`);
@@ -384,20 +318,16 @@ class SequenceGame {
                     if (myState) {
                         this.hand = myState.hand;
                         this.myColor = myState.color;
-                        // Map my peerId if it changed (though host uses roomId)
                         myState.peerId = roomId;
                     }
-                    console.log("Restored game state from localStorage");
                 } catch (e) {
                     console.error("Failed to restore game state:", e);
                 }
             }
         }
 
+        this.peer = this.isHost ? new Peer(roomId, PEER_CONFIG) : new Peer(PEER_CONFIG);
 
-        this.peer = new Peer(this.isHost ? roomId : undefined);
-
-        // Connection watchdog: if we don't 'open' within 10s, try a hard restart
         const watchdog = setTimeout(() => {
             if (this.peer && !this.peer.open && !this.peer.destroyed) {
                 console.warn("PeerJS open timed out, restarting session...");
@@ -411,7 +341,7 @@ class SequenceGame {
                 ui.status.innerText = "Waiting for players...";
                 ui.inviteBox.style.display = 'block';
                 ui.inviteUrl.value = shareUrl;
-                ui.inviteUrl.onmousedown = () => { // using mousedown for quick selection
+                ui.inviteUrl.onmousedown = () => {
                     ui.inviteUrl.select();
                     navigator.clipboard.writeText(shareUrl).then(() => {
                         const originalLabel = document.querySelector('.invite-label').innerText;
@@ -423,8 +353,11 @@ class SequenceGame {
                         }, 2000);
                     });
                 };
+                ui.teamCfg.style.display = 'block';
+                this.updateTeamLabels(ui.teamLabels);
+                if (this.syncPlayers) this.syncPlayers();
+                ui.startBtn.style.display = 'block';
             } else {
-                console.log("Attempting to join session:", roomId);
                 this.connectToHost(roomId);
             }
         });
@@ -441,22 +374,25 @@ class SequenceGame {
             });
         }
 
-
         this.peer.on('error', (err) => {
+            const errStr = String(err);
+            if (err.type === 'peer-unavailable' || errStr.includes('Could not connect to peer')) {
+                console.log("Peer unavailable (expected during reconnection):", errStr);
+                if (!this.isHost) {
+                    ui.status.innerText = "Waiting for host...";
+                    setTimeout(() => this.attemptReconnect(), 5000);
+                }
+                return;
+            }
+
             console.error("PeerJS Network Error:", err);
             if (!this.isHost) {
-                if (err.type === 'peer-unavailable') {
-                    ui.status.innerText = "Host room not found. Retrying in 5s...";
-                } else {
-                    ui.status.innerText = "Network error: " + err.type;
-                }
+                ui.status.innerText = "Network error: " + err.type;
                 setTimeout(() => this.attemptReconnect(), 5000);
             } else {
                 if (err.type === 'identity-taken') {
                     ui.status.innerText = "ID Taken. Re-initializing...";
                     setTimeout(() => this.startSession(roomId, true), 3000);
-                } else {
-                    ui.status.innerText = "Network Error: " + err.type;
                 }
             }
         });
@@ -606,25 +542,39 @@ class SequenceGame {
     }
 
     connectToHost(hostID) {
-        if (!this.peer || this.peer.destroyed) return;
+        if (!this.peer || this.peer.destroyed || this.peer.disconnected) return;
+
+        // Prevent multiple simultaneous connections to host
+        if (this.hostConnection && this.hostConnection.open) return;
+        if (this._connectingToHost) return;
+        this._connectingToHost = true;
 
         console.log("Connecting to host:", hostID);
         const newConn = this.peer.connect(hostID, { reliable: true });
 
-        // Host handshake watchdog
         const handshakeTimeout = setTimeout(() => {
+            this._connectingToHost = false;
             if (newConn && !newConn.open) {
-                console.warn("Host connection handshake timed out, retrying...");
+                console.warn("Host connection handshake timed out.");
                 newConn.close();
                 this.attemptReconnect();
             }
-        }, 8000);
+        }, 10000);
 
         newConn.on('open', () => {
             clearTimeout(handshakeTimeout);
+            this._connectingToHost = false;
             this._reconnectAttempts = 0;
             const warningEl = document.getElementById('host-dropped-warning');
             if (warningEl) warningEl.style.display = 'none';
+        });
+
+        newConn.on('error', () => {
+            this._connectingToHost = false;
+        });
+
+        newConn.on('close', () => {
+            this._connectingToHost = false;
         });
 
         this.hostConnection = newConn;
