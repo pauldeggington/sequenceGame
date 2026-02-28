@@ -431,6 +431,8 @@ body {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    /* Prevent animation overshoot from shaking viewport */
 }
 
 .sidebar-wrapper {
@@ -498,6 +500,8 @@ body {
     padding: 6px 10px;
     gap: 4px;
     margin: 0 auto;
+    overflow: hidden;
+    /* Contain animation overshoot */
 }
 
 header {
@@ -623,6 +627,7 @@ header h1 {
     /* Coordinate anchor for cells and SVG */
     margin: 0 auto;
     perspective: 1000px;
+    transform-style: preserve-3d;
     /* Improve 3D animation stability */
 }
 
@@ -642,6 +647,8 @@ header h1 {
     min-width: 0;
     min-height: 0;
     touch-action: manipulation;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 .cell-card-img,
@@ -830,6 +837,8 @@ header h1 {
         inset 0 -2px 4px rgba(0, 0, 0, 0.3);
     border: 2px solid rgba(255, 255, 255, 0.2);
     animation: chip-drop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 @keyframes chip-drop {
@@ -905,6 +914,8 @@ header h1 {
     overflow: visible;
     border: none;
     touch-action: manipulation;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 .hand-card-img {
