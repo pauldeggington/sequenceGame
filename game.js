@@ -1244,7 +1244,7 @@ class SequenceGame {
         const chip = this.chips[r][c];
         let highlight = '';
 
-        if (this.jackMode === 'one-eye' && chip && chip !== this.myColor) highlight = ' highlight-remove';
+        if (this.jackMode === 'one-eye' && chip && chip !== this.myColor && !this.isChipInSequence(r, c)) highlight = ' highlight-remove';
         if (this.jackMode === 'two-eye' && !chip && val !== 'FREE') highlight = ' highlight-place';
 
         if (this.hintsEnabled && !this.jackMode) {
