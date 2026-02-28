@@ -186,6 +186,18 @@ class SequenceGame {
             seqLines: document.getElementById('sequence-lines'),
         };
         const ui = this.ui;
+
+        this.syncPlayers = () => {
+            if (this.isHost) {
+                this.broadcast('players_sync', {
+                    hostName: this.myName,
+                    peers: this.peers,
+                    peerNames: this.peerNames
+                });
+            }
+            renderSetupState();
+        };
+
         const renderSetupState = () => {
             if (!ui.playersEl) return;
             ui.playersEl.innerHTML = '';
@@ -205,34 +217,6 @@ class SequenceGame {
                 }
                 el.innerText = `👤 ${peerName}`;
                 ui.playersEl.appendChild(el);
-            });
-        };
-
-        this.syncPlayers = () => {
-            if (this.isHost) {
-                this.broadcast('players_sync', {
-                    hostName: this.myName,
-                    peers: this.peers,
-                    peerNames: this.peerNames
-                });
-            }
-            renderSetupState();
-        };
-
-        const renderSetupState = () => {
-            playersEl.innerHTML = '';
-            const myDisplay = this.myName || 'You';
-            const me = document.createElement('div');
-            me.className = 'player-entry me';
-            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            playersEl.appendChild(me);
-
-            this.peers.forEach((pid, i) => {
-                const el = document.createElement('div');
-                el.className = 'player-entry';
-                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
-                el.innerText = `👤 ${peerName}`;
-                playersEl.appendChild(el);
             });
         };
 
@@ -379,6 +363,8 @@ class SequenceGame {
 
         // ── Setup UI ──
         // Team buttons
+
+
 
 
 

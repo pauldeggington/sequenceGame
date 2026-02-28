@@ -48,23 +48,41 @@ for i, line in enumerate(lines):
         in_init_setup = True
         continue
 
-    if in_init_setup and "        // Name input" in line:
+    if in_init_setup and "        const ui = this.ui;" in line:
         import textwrap
         setup_logic = textwrap.dedent("""\
+        const ui = this.ui;
+
+        this.syncPlayers = () => {
+            if (this.isHost) {
+                this.broadcast('players_sync', {
+                    hostName: this.myName,
+                    peers: this.peers,
+                    peerNames: this.peerNames
+                });
+            }
+            renderSetupState();
+        };
+
         const renderSetupState = () => {
-            playersEl.innerHTML = '';
+            if (!ui.playersEl) return;
+            ui.playersEl.innerHTML = '';
             const myDisplay = this.myName || 'You';
             const me = document.createElement('div');
             me.className = 'player-entry me';
             me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            playersEl.appendChild(me);
+            ui.playersEl.appendChild(me);
 
             this.peers.forEach((pid, i) => {
                 const el = document.createElement('div');
                 el.className = 'player-entry';
-                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
+                let peerName = this.peerNames[pid];
+                if (!peerName) {
+                    if (pid === 'HOST') peerName = 'Host';
+                    else peerName = `Player ${i + 2}`;
+                }
                 el.innerText = `👤 ${peerName}`;
-                playersEl.appendChild(el);
+                ui.playersEl.appendChild(el);
             });
         };
 
