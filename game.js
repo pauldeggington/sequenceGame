@@ -50,6 +50,8 @@ const PEER_CONFIG = {
     }
 };
 
+const MAX_RECONNECT_ATTEMPTS = 25; // ~2 minutes of attempts
+
 function getCardImagePath(card) {
     if (card === 'FREE') return 'card_images/back_light.png';
     const rank = card.slice(0, -1);
@@ -129,9 +131,12 @@ class SequenceGame {
         this.teamCount = 2;
         this.peers = [];         // connected peer IDs
         this.allPeers = [];      // full peer list including self (for rank calc)
+        this.myPeerId = null;    // stable local peer ID
+        this.lastHostId = null;  // the ID of the last known host
         this.peerNames = {};     // peerId -> name
         this.playerIDMap = {};   // peerId -> playerID
         this.myName = localStorage.getItem('sequence_playerName') || '';
+        this._takeoverRetries = 0;
         this.started = false;
         this.hintsEnabled = false;
         this.hoveredCardIndex = null;
@@ -346,6 +351,8 @@ class SequenceGame {
 
         this.peer.on('open', (id) => {
             clearTimeout(watchdog);
+            console.log('My peer ID is: ' + id);
+            this.myPeerId = id;
             if (this.isHost) {
                 ui.status.innerText = "Waiting for players...";
                 ui.inviteBox.style.display = 'block';
@@ -402,10 +409,18 @@ class SequenceGame {
                 setTimeout(() => this.attemptReconnect(), 5000);
             } else {
                 if (err.type === 'identity-taken') {
-                    console.warn("Identity taken (ID already exists on network). Switching to client mode.");
-                    this.isHost = false;
-                    ui.status.innerText = "Joining existing room...";
-                    setTimeout(() => this.startSession(roomId, false), 1000);
+                    if (this.isHost && this.hostStateBackup && this._takeoverRetries < 3) {
+                        this._takeoverRetries++;
+                        console.warn(`Takeover ID taken. Retry ${this._takeoverRetries}/3...`);
+                        ui.status.innerText = `Takeover retry ${this._takeoverRetries}...`;
+                        setTimeout(() => this.startSession(roomId, true), 3000);
+                    } else {
+                        console.warn("Identity taken. Switching/Reverting to client mode.");
+                        this.isHost = false;
+                        this._takeoverRetries = 0;
+                        ui.status.innerText = "Joining existing room...";
+                        setTimeout(() => this.startSession(roomId, false), 1000);
+                    }
                 }
             }
         });
@@ -463,9 +478,11 @@ class SequenceGame {
             }
         } else if (type === 'players_sync') {
             if (!this.isHost) {
-                this.peers = data.peers.filter(id => id !== this.peer.id);
+                this.peers = data.peers.filter(id => id !== (this.myPeerId || this.peer.id));
                 if (!this.peers.includes('HOST')) this.peers.unshift('HOST');
                 this.allPeers = data.allPeers || [];
+                // The first person in the allPeers list is ALWAYS the current host
+                if (this.allPeers.length > 0) this.lastHostId = this.allPeers[0];
                 this.peerNames = data.peerNames;
                 this.peerNames['HOST'] = data.hostName ? data.hostName + " (Host)" : "Host";
                 if (this.syncPlayers) this.syncPlayers(); // triggers renderstate
@@ -629,21 +646,27 @@ class SequenceGame {
                 takeoverBtn.onclick = () => this.takeOverAsHost();
 
                 // AUTOMATIC TAKEOVER LOGIC
-                // Use the full peer list (including self) to find deterministic order
-                // Sort all peers alphabetically (excluding the old "HOST" string)
-                const otherPeers = [...this.allPeers].filter(p => p !== 'HOST' && p !== '').sort();
-                const myRank = otherPeers.indexOf(this.peer.id);
+                // Deterministic Rank: Sorted list of all peers EXCLUDING the last known host
+                const currentId = this.myPeerId || this.peer.id;
+                const otherPeers = [...this.allPeers].filter(p => p !== this.lastHostId && p !== 'HOST' && p !== '').sort();
+                const myRank = otherPeers.indexOf(currentId);
 
                 // Staggered takeover: Successor 0 waits ~15s (3 attempts), Successor 1 waits ~30s (6 attempts), etc.
-                // We exclude the first person in sorted list if it matches known old host (already handled by roomID logic)
                 const attemptsToWait = (myRank + 1) * 3;
 
                 if (myRank !== -1 && this._reconnectAttempts >= attemptsToWait) {
-                    console.log(`Auto-takeover triggered (Rank: ${myRank}, Attempt: ${this._reconnectAttempts})`);
+                    console.log(`Auto-takeover triggered (Rank: ${myRank}, ID: ${currentId}, Attempt: ${this._reconnectAttempts})`);
                     this.takeOverAsHost();
+                    return; // Stop reconnect flow
                 } else if (myRank !== -1) {
                     timerEl.innerText += ` (Auto-takeover in ${attemptsToWait - this._reconnectAttempts}...)`;
                 }
+            }
+
+            // FALLBACK: Room lost if too many attempts
+            if (this._reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                this.handleRoomLost();
+                return;
             }
         }
 
@@ -664,10 +687,25 @@ class SequenceGame {
     }
 
     takeOverAsHost() {
-        if (!this.hostStateBackup || this.isHost) return;
+        if (this.isHost) return;
 
         const roomID = window.location.hash.substring(1);
         if (!roomID) return;
+
+        // Fallback to localStorage if state is missing in memory
+        if (!this.hostStateBackup) {
+            const saved = localStorage.getItem(`sequence_gameState_${roomID}`);
+            if (saved) {
+                try {
+                    this.hostStateBackup = JSON.parse(saved);
+                } catch (e) { }
+            }
+        }
+
+        if (!this.hostStateBackup) {
+            console.error("Takeover failed: No state backup available.");
+            return;
+        }
 
         console.log("Taking over as host for room:", roomID);
         if (this.ui.status) this.ui.status.innerText = "Migrating host...";
@@ -679,10 +717,12 @@ class SequenceGame {
         // Elevate to host
         this.isHost = true;
         this._reconnecting = false;
+        this._takeoverRetries = 0; // Reset retries
 
-        // Reset networking state for fresh host role
+        // CRITICAL: Reset networking state for fresh host role
         this.peers = [];
         this.connections = {};
+        this.hostConnection = null;
 
         // Ensure PeerJS disconnects from the old closed host properly
         if (this.peer && !this.peer.destroyed) {
@@ -694,6 +734,32 @@ class SequenceGame {
 
         // Restart session as the new host
         this.startSession(roomID, true);
+    }
+
+    handleRoomLost() {
+        console.warn("Reconnection threshold reached. Room marked as lost.");
+        this.started = false;
+        this._reconnecting = false;
+        this._reconnectAttempts = 0;
+
+        if (this.peer && !this.peer.destroyed) {
+            this.peer.destroy();
+        }
+
+        const ui = this.ui;
+        if (ui) {
+            ui.gameScreen.style.display = 'none';
+            ui.setupScreen.style.display = 'flex';
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Room lost: No host available.";
+            ui.status.style.color = "var(--red)";
+
+            const warningEl = document.getElementById('host-dropped-warning');
+            if (warningEl) warningEl.style.display = 'none';
+        }
+
+        window.location.hash = '';
+        localStorage.removeItem('sequence_roomID');
     }
 
     setupConnection(conn) {
