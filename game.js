@@ -162,6 +162,18 @@ class SequenceGame {
             renderSetupState();
         };
 
+        // Auto-reconnect on visibility change (helps with mobile backgrounding)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.started && !this.isHost) {
+                const needsReconnect = !this.hostConnection || !this.hostConnection.open ||
+                    !this.peer || this.peer.destroyed || this.peer.disconnected;
+                if (needsReconnect) {
+                    console.log("Tab visible & connection lost. Auto-reconnecting...");
+                    this.attemptReconnect();
+                }
+            }
+        });
+
         const renderSetupState = () => {
             if (!ui.playersEl) return;
             ui.playersEl.innerHTML = '';
