@@ -100,7 +100,18 @@ for i, line in enumerate(lines):
 
         const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
 
-        this.peer = new Peer(this.isHost ? roomId : undefined);
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            }
+        };
+        this.peer = new Peer(this.isHost ? roomId : undefined, peerConfig);
 
         this.peer.on('open', (id) => {
             if (this.isHost) {

@@ -215,123 +215,167 @@ class SequenceGame {
             renderSetupState();
         };
 
-        // Name input
-        if (ui.nameInput) {
-            ui.nameInput.addEventListener('input', () => {
-                this.myName = ui.nameInput.value.trim();
-                localStorage.setItem('sequence_playerName', this.myName);
-                if (this.isHost) {
-                    this.syncPlayers();
-                } else {
-                    this.sendJoin();
-                }
-                renderSetupState();
+        const renderSetupState = () => {
+            playersEl.innerHTML = '';
+            const myDisplay = this.myName || 'You';
+            const me = document.createElement('div');
+            me.className = 'player-entry me';
+            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
+            playersEl.appendChild(me);
+
+            this.peers.forEach((pid, i) => {
+                const el = document.createElement('div');
+                el.className = 'player-entry';
+                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
+                el.innerText = `👤 ${peerName}`;
+                playersEl.appendChild(el);
             });
-            const savedName = localStorage.getItem('sequence_playerName');
-            if (savedName) {
-                ui.nameInput.value = savedName;
-                this.myName = savedName;
-            }
+        };
+
+        // Name input
+        nameInput.addEventListener('input', () => {
+            this.myName = nameInput.value.trim();
+            this.broadcast('name', this.myName);
+            renderSetupState();
+        });
+
+        let roomId = window.location.hash.substring(1);
+        const savedRoomId = localStorage.getItem('sequence_roomID');
+        const savedIsHost = localStorage.getItem('sequence_isHost');
+
+        if (roomId) {
+            this.isHost = false;
+            statusEl.innerText = "Joining room...";
+            localStorage.setItem('sequence_roomID', roomId);
+            localStorage.setItem('sequence_isHost', 'false');
+        } else if (savedRoomId && savedIsHost === 'true') {
+            roomId = savedRoomId;
+            window.location.hash = roomId;
+            this.isHost = true;
+            statusEl.innerText = "Re-hosting room...";
+        } else {
+            roomId = genId(8);
+            window.location.hash = roomId;
+            this.isHost = true;
+            statusEl.innerText = "Room created!";
+            localStorage.setItem('sequence_roomID', roomId);
+            localStorage.setItem('sequence_isHost', 'true');
         }
 
-        // ── Actions Setup ──
+        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
+
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            }
+        };
+        this.peer = new Peer(this.isHost ? roomId : undefined, peerConfig);
+
+        this.peer.on('open', (id) => {
+            if (this.isHost) {
+                statusEl.innerText = "Waiting for players...";
+                inviteBox.style.display = 'block';
+                inviteUrl.value = shareUrl;
+                inviteUrl.addEventListener('click', () => {
+                    inviteUrl.select();
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        const originalLabel = document.querySelector('.invite-label').innerText;
+                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                        document.querySelector('.invite-label').style.color = 'var(--gold)';
+                        setTimeout(() => {
+                            document.querySelector('.invite-label').innerText = originalLabel;
+                            document.querySelector('.invite-label').style.color = '';
+                        }, 2000);
+                    });
+                });
+                teamCfg.style.display = 'block';
+                this.updateTeamLabels(teamLabels);
+                renderSetupState();
+            } else {
+                console.log("Attempting to join session:", roomId);
+                this.connectToHost(roomId);
+            }
+        });
+
+        if (this.isHost) {
+            this.peer.on('connection', (conn) => {
+                this.setupConnection(conn);
+            });
+        }
+
         this.sendName = (name) => this.broadcast('name', name);
-        this.sendJoin = () => this.broadcast('join', { name: this.myName, playerID: this.playerID });
         this.sendConfig = (config) => this.broadcast('config', config);
         this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
         this.sendMove = (data) => this.broadcast('move', data);
         this.sendSync = (data) => this.broadcast('sync', data);
-        this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
 
-        // Determine room ID and start flow
-        const hashId = window.location.hash.substring(1);
-        const savedRoomId = localStorage.getItem('sequence_roomID');
-        const savedIsHost = localStorage.getItem('sequence_isHost');
-
-        if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
-            ui.status.innerText = "Re-hosting room...";
-            this.startSession(hashId, true);
-        } else if (hashId) {
-            ui.status.innerText = "Joining room...";
-            this.startSession(hashId, false);
-        } else if (savedRoomId && savedIsHost === 'true') {
-            ui.createSec.style.display = 'block';
-            ui.status.innerText = "Ready to start a game";
-        } else {
-            ui.createSec.style.display = 'block';
-            ui.status.innerText = "Welcome to Very Wild Jacks";
-        }
-
-        ui.createBtn.addEventListener('click', () => {
-            const newId = genId(8);
-            ui.status.innerText = "Creating room...";
-            this.startSession(newId, true);
-        });
-
-        if (ui.playSingleBtn) {
-            ui.playSingleBtn.addEventListener('click', () => {
-                this.isSinglePlayer = true;
-                this.teamCount = 2; // Human vs AI
-                this.myName = this.myName || "Player";
-                this.isHost = true; // Act as host for game logic
-
-                // Set up peers array manually (empty peer for the AI)
-                this.peers = [];
-                this.peerNames = {};
-                this.playerIDMap = {};
-
-                // Show options instead of starting
-                ui.createSec.style.display = 'none';
-                ui.teamCfg.style.display = 'block';
-                ui.teamCfg.classList.add('single-player-setup');
-                ui.startBtn.style.display = 'block';
-                ui.backBtn.style.display = 'block';
-
-                // Allow team selection for 1v1 or 1v1v1
-                this.updateTeamLabels(ui.teamLabels);
-            });
-        }
-
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const ui = this.ui;
-        if (!ui) return;
-
-        if (ui.backBtn) {
-            ui.backBtn.addEventListener('click', () => {
-                if (this.isSinglePlayer) {
-                    this.isSinglePlayer = false;
-                } else if (this.isHost) {
-                    if (this.peer) {
-                        this.peer.destroy();
-                        this.peer = null;
-                    }
-                    window.location.hash = '';
-                    localStorage.removeItem('sequence_roomID');
-                    localStorage.removeItem('sequence_isHost');
+        this.handleData = (type, data, peerId) => {
+            if (type === 'name') {
+                this.peerNames[peerId] = data;
+                renderSetupState();
+                if (this.isHost) this.broadcast('name', data, peerId);
+            } else if (type === 'config' && !this.isHost) {
+                if (data.teamCount) {
+                    this.teamCount = data.teamCount;
+                    document.querySelectorAll('.team-btn').forEach(btn => {
+                        btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
+                    });
+                    this.updateTeamLabels(teamLabels);
                 }
+                if (data.hintsEnabled !== undefined) {
+                    this.hintsEnabled = data.hintsEnabled;
+                    const toggle = document.getElementById('show-hints-toggle');
+                    if (toggle) toggle.checked = this.hintsEnabled;
+                }
+                teamCfg.style.display = 'block';
+                playerList.style.display = 'block';
+            } else if (type === 'gameStart') {
+                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+                this.sequences = { red: 0, blue: 0, green: 0 };
+                document.getElementById('game-over-overlay').style.display = 'none';
+                document.getElementById('play-again-waiting').style.display = 'none';
 
-                // Reset UI state
-                ui.createSec.style.display = 'block';
-                ui.teamCfg.style.display = 'none';
-                ui.inviteBox.style.display = 'none';
-                ui.startBtn.style.display = 'none';
-                ui.playerList.style.display = 'none';
-                ui.backBtn.style.display = 'none';
-                ui.status.innerText = "Welcome to Very Wild Jacks";
-                ui.teamCfg.classList.remove('single-player-setup');
+                this.deck = data.deck;
+                this.hand = data.myHand;
+                this.myColor = data.myColor;
+                this.currentTurn = data.currentTurn;
+                this.teamCount = data.teamCount;
+                this.colorNames = data.colorNames || {};
+                this.hintsEnabled = data.hintsEnabled || false;
+                this.started = true;
+                this.showGameScreen();
 
-                // Reset peers list
-                this.peers = [];
-                this.peerNames = {};
-                this.playerIDMap = {};
-                if (this.ui.playersEl) this.ui.playersEl.innerHTML = '';
-            });
-        }
+                if (data.boardChips) {
+                    this.chips = data.boardChips;
+                    this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
+                    this.renderBoard();
+                    this.updateScoreUI();
+                }
+            } else if (type === 'move') {
+                this.applyOpponentMove(data);
+                this.currentTurn = data.nextTurn;
+                this.updateTurnUI();
+                if (this.isHost) this.broadcast('move', data, peerId);
+            } else if (type === 'sync') {
+                this.sequences = data.sequences;
+                this.updateScoreUI();
+                this.renderBoard();
+                if (data.winner) {
+                    this.currentTurn = null;
+                    this.showWinPopup(data.winner);
+                }
+            }
+        };
 
+        // ── Setup UI ──
         // Team buttons
+
         document.querySelectorAll('.team-btn').forEach(btn => {
             btn.onmousedown = () => { // focus fix
                 document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
