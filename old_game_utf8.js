@@ -1,8 +1,8 @@
-/**
- * Sequence P2P Game – Trystero (serverless P2P)
- * ─────────────────────────────────────────────
+﻿/**
+ * Sequence P2P Game ΓÇô Trystero (serverless P2P)
+ * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
  * Flow:
- *  1. Setup screen: host generates room → share link → pick teams → start
+ *  1. Setup screen: host generates room ΓåÆ share link ΓåÆ pick teams ΓåÆ start
  *  2. Game screen:  board + hand, no opponent hand shown
  */
 
@@ -11,15 +11,11 @@
 // Safari/iOS performance optimization
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || /CriOS/i.test(navigator.userAgent);
-const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+if (isIOS || isSafari) {
+    document.body.classList.add('reduced-fx');
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-    if (isIOS || isSafari || isMac) {
-        document.body.classList.add('reduced-fx');
-    }
-});
-
-// ── Constants ─────────────────────────────────────────────────
+// ΓöÇΓöÇ Constants ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const BOARD_LAYOUT = [
     ["FREE", "2S", "3S", "4S", "5S", "6S", "7S", "8S", "9S", "FREE"],
     ["6C", "5C", "4C", "3C", "2C", "AH", "KH", "QH", "10H", "10S"],
@@ -33,7 +29,7 @@ const BOARD_LAYOUT = [
     ["FREE", "AD", "KD", "QD", "10D", "9D", "8D", "7D", "6D", "FREE"]
 ];
 
-const SUITS = { H: '♥', D: '♦', S: '♠', C: '♣' };
+const SUITS = { H: 'ΓÖÑ', D: 'ΓÖª', S: 'ΓÖá', C: 'ΓÖú' };
 const ONE_EYE = new Set(['JH', 'JS']);
 const TWO_EYE = new Set(['JD', 'JC']);
 const TEAM_COLORS = ['red', 'blue', 'green'];
@@ -61,7 +57,7 @@ function genId(len = 8) {
         .map(b => b.toString(36).padStart(2, '0')).join('').slice(0, len);
 }
 
-// ── Game Class ────────────────────────────────────────────────
+// ΓöÇΓöÇ Game Class ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 class SequenceGame {
     constructor() {
         this.board = BOARD_LAYOUT;
@@ -143,9 +139,9 @@ class SequenceGame {
         el.style.setProperty('--y2', `${-100 + Math.random() * 200}px`);
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // SETUP SCREEN
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     initSetup() {
         this.ui = {
             status: document.getElementById('setup-status'),
@@ -186,6 +182,27 @@ class SequenceGame {
             seqLines: document.getElementById('sequence-lines'),
         };
         const ui = this.ui;
+        const renderSetupState = () => {
+            if (!ui.playersEl) return;
+            ui.playersEl.innerHTML = '';
+            const myDisplay = this.myName || 'You';
+            const me = document.createElement('div');
+            me.className = 'player-entry me';
+            me.innerText = `≡ƒæñ ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
+            ui.playersEl.appendChild(me);
+
+            this.peers.forEach((pid, i) => {
+                const el = document.createElement('div');
+                el.className = 'player-entry';
+                let peerName = this.peerNames[pid];
+                if (!peerName) {
+                    if (pid === 'HOST') peerName = 'Host';
+                    else peerName = `Player ${i + 2}`;
+                }
+                el.innerText = `≡ƒæñ ${peerName}`;
+                ui.playersEl.appendChild(el);
+            });
+        };
 
         this.syncPlayers = () => {
             if (this.isHost) {
@@ -198,120 +215,67 @@ class SequenceGame {
             renderSetupState();
         };
 
-        const renderSetupState = () => {
-            if (!ui.playersEl) return;
-            ui.playersEl.innerHTML = '';
-            const myDisplay = this.myName || 'You';
-            const me = document.createElement('div');
-            me.className = 'player-entry me';
-            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            ui.playersEl.appendChild(me);
-
-            this.peers.forEach((pid, i) => {
-                const el = document.createElement('div');
-                el.className = 'player-entry';
-                let peerName = this.peerNames[pid];
-                if (!peerName) {
-                    if (pid === 'HOST') peerName = 'Host';
-                    else peerName = `Player ${i + 2}`;
-                }
-                el.innerText = `👤 ${peerName}`;
-                ui.playersEl.appendChild(el);
-            });
-        };
-
         // Name input
-        ui.nameInput.addEventListener('input', () => {
-            this.myName = ui.nameInput.value.trim();
-            this.broadcast('name', this.myName);
-            renderSetupState();
-        });
+        if (ui.nameInput) {
+            ui.nameInput.addEventListener('input', () => {
+                this.myName = ui.nameInput.value.trim();
+                localStorage.setItem('sequence_playerName', this.myName);
+                if (this.isHost) {
+                    this.syncPlayers();
+                } else {
+                    this.sendJoin();
+                }
+                renderSetupState();
+            });
+            const savedName = localStorage.getItem('sequence_playerName');
+            if (savedName) {
+                ui.nameInput.value = savedName;
+                this.myName = savedName;
+            }
+        }
 
-        let roomId = window.location.hash.substring(1);
+        // ΓöÇΓöÇ Actions Setup ΓöÇΓöÇ
+        this.sendName = (name) => this.broadcast('name', name);
+        this.sendJoin = () => this.broadcast('join', { name: this.myName, playerID: this.playerID });
+        this.sendConfig = (config) => this.broadcast('config', config);
+        this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
+        this.sendMove = (data) => this.broadcast('move', data);
+        this.sendSync = (data) => this.broadcast('sync', data);
+        this.sendEmoji = (emoji) => this.broadcast('emoji', emoji);
+
+        // Determine room ID and start flow
+        const hashId = window.location.hash.substring(1);
         const savedRoomId = localStorage.getItem('sequence_roomID');
         const savedIsHost = localStorage.getItem('sequence_isHost');
 
-        const initPeer = () => {
-            const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
-
-            const peerConfig = {
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        { urls: 'stun:stun3.l.google.com:19302' },
-                        { urls: 'stun:stun4.l.google.com:19302' }
-                    ]
-                }
-            };
-            this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
-
-            this.peer.on('open', (id) => {
-                if (this.isHost) {
-                    ui.status.innerText = "Waiting for players...";
-                    ui.inviteBox.style.display = 'block';
-                    ui.inviteUrl.value = shareUrl;
-                    ui.inviteUrl.addEventListener('click', () => {
-                        ui.inviteUrl.select();
-                        navigator.clipboard.writeText(shareUrl).then(() => {
-                            const originalLabel = document.querySelector('.invite-label').innerText;
-                            document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
-                            document.querySelector('.invite-label').style.color = 'var(--gold)';
-                            setTimeout(() => {
-                                document.querySelector('.invite-label').innerText = originalLabel;
-                                document.querySelector('.invite-label').style.color = '';
-                            }, 2000);
-                        });
-                    });
-                    ui.teamCfg.style.display = 'block';
-                    this.updateTeamLabels(ui.teamLabels);
-                    renderSetupState();
-                } else {
-                    console.log("Attempting to join session:", roomId);
-                    this.connectToHost(roomId);
-                }
-            });
-
-            if (this.isHost) {
-                this.peer.on('connection', (conn) => {
-                    this.setupConnection(conn);
-                });
-            }
-        };
-
-        if (roomId) {
-            this.isHost = false;
-            ui.status.innerText = "Joining room...";
-            localStorage.setItem('sequence_roomID', roomId);
-            localStorage.setItem('sequence_isHost', 'false');
-            initPeer();
-        } else if (savedRoomId && savedIsHost === 'true') {
-            roomId = savedRoomId;
-            window.location.hash = roomId;
-            this.isHost = true;
+        if (hashId && hashId === savedRoomId && savedIsHost === 'true') {
             ui.status.innerText = "Re-hosting room...";
-            initPeer();
+            this.startSession(hashId, true);
+        } else if (hashId) {
+            ui.status.innerText = "Joining room...";
+            this.startSession(hashId, false);
+        } else if (savedRoomId && savedIsHost === 'true') {
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Ready to start a game";
         } else {
-            ui.status.innerText = "";
-            ui.createSec.style.display = "block";
+            ui.createSec.style.display = 'block';
+            ui.status.innerText = "Welcome to Very Wild Jacks";
+        }
 
-            ui.createBtn.onclick = () => {
-                ui.createSec.style.display = "none";
-                roomId = genId(8);
-                window.location.hash = roomId;
-                this.isHost = true;
-                ui.status.innerText = "Room created!";
-                localStorage.setItem('sequence_roomID', roomId);
-                localStorage.setItem('sequence_isHost', 'true');
-                initPeer();
-            };
+        ui.createBtn.addEventListener('click', () => {
+            const newId = genId(8);
+            ui.status.innerText = "Creating room...";
+            this.startSession(newId, true);
+        });
 
-            ui.playSingleBtn.onclick = () => {
+        if (ui.playSingleBtn) {
+            ui.playSingleBtn.addEventListener('click', () => {
                 this.isSinglePlayer = true;
+                this.teamCount = 2; // Human vs AI
+                this.myName = this.myName || "Player";
                 this.isHost = true; // Act as host for game logic
 
-                // Set up peers array manually (empty peer for the AI will be built by startGame)
+                // Set up peers array manually (empty peer for the AI)
                 this.peers = [];
                 this.peerNames = {};
                 this.playerIDMap = {};
@@ -321,85 +285,53 @@ class SequenceGame {
                 ui.teamCfg.style.display = 'block';
                 ui.teamCfg.classList.add('single-player-setup');
                 ui.startBtn.style.display = 'block';
+                ui.backBtn.style.display = 'block';
 
                 // Allow team selection for 1v1 or 1v1v1
                 this.updateTeamLabels(ui.teamLabels);
-            };
+            });
         }
 
-        this.sendName = (name) => this.broadcast('name', name);
-        this.sendConfig = (config) => this.broadcast('config', config);
-        this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
-        this.sendMove = (data) => this.broadcast('move', data);
-        this.sendSync = (data) => this.broadcast('sync', data);
+        this.initEventListeners();
+    }
 
-        this.handleData = (type, data, peerId) => {
-            if (type === 'name') {
-                this.peerNames[peerId] = data;
-                renderSetupState();
-                if (this.isHost) this.broadcast('name', data, peerId);
-            } else if (type === 'config' && !this.isHost) {
-                if (data.teamCount) {
-                    this.teamCount = data.teamCount;
-                    document.querySelectorAll('.team-btn').forEach(btn => {
-                        btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
-                    });
-                    this.updateTeamLabels(ui.teamLabels);
-                }
-                if (data.hintsEnabled !== undefined) {
-                    this.hintsEnabled = data.hintsEnabled;
-                    const toggle = document.getElementById('show-hints-toggle');
-                    if (toggle) toggle.checked = this.hintsEnabled;
-                }
-                ui.teamCfg.style.display = 'block';
-                ui.playerList.style.display = 'block';
-            } else if (type === 'gameStart') {
-                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-                this.sequences = { red: 0, blue: 0, green: 0 };
-                document.getElementById('game-over-overlay').style.display = 'none';
-                document.getElementById('play-again-waiting').style.display = 'none';
+    initEventListeners() {
+        const ui = this.ui;
+        if (!ui) return;
 
-                this.deck = data.deck;
-                this.hand = data.myHand;
-                this.myColor = data.myColor;
-                this.currentTurn = data.currentTurn;
-                this.teamCount = data.teamCount;
-                this.colorNames = data.colorNames || {};
-                this.hintsEnabled = data.hintsEnabled || false;
-                this.started = true;
-                this.showGameScreen();
-
-                if (data.boardChips) {
-                    this.chips = data.boardChips;
-                    this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
-                    this.renderBoard();
-                    this.updateScoreUI();
+        if (ui.backBtn) {
+            ui.backBtn.addEventListener('click', () => {
+                if (this.isSinglePlayer) {
+                    this.isSinglePlayer = false;
+                } else if (this.isHost) {
+                    if (this.peer) {
+                        this.peer.destroy();
+                        this.peer = null;
+                    }
+                    window.location.hash = '';
+                    localStorage.removeItem('sequence_roomID');
+                    localStorage.removeItem('sequence_isHost');
                 }
-            } else if (type === 'move') {
-                this.applyOpponentMove(data);
-                this.currentTurn = data.nextTurn;
-                this.updateTurnUI();
-                if (this.isHost) this.broadcast('move', data, peerId);
-            } else if (type === 'sync') {
-                this.sequences = data.sequences;
-                this.updateScoreUI();
-                this.renderBoard();
-                if (data.winner) {
-                    this.currentTurn = null;
-                    this.showWinPopup(data.winner);
-                }
-            }
-        };
 
-        // ── Setup UI ──
+                // Reset UI state
+                ui.createSec.style.display = 'block';
+                ui.teamCfg.style.display = 'none';
+                ui.inviteBox.style.display = 'none';
+                ui.startBtn.style.display = 'none';
+                ui.playerList.style.display = 'none';
+                ui.backBtn.style.display = 'none';
+                ui.status.innerText = "Welcome to Very Wild Jacks";
+                ui.teamCfg.classList.remove('single-player-setup');
+
+                // Reset peers list
+                this.peers = [];
+                this.peerNames = {};
+                this.playerIDMap = {};
+                if (this.ui.playersEl) this.ui.playersEl.innerHTML = '';
+            });
+        }
+
         // Team buttons
-
-
-
-
-
-
-
         document.querySelectorAll('.team-btn').forEach(btn => {
             btn.onmousedown = () => { // focus fix
                 document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
@@ -533,7 +465,7 @@ class SequenceGame {
                     ui.inviteUrl.select();
                     navigator.clipboard.writeText(shareUrl).then(() => {
                         const originalLabel = document.querySelector('.invite-label').innerText;
-                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+                        document.querySelector('.invite-label').innerText = '≡ƒôï Copied to clipboard!';
                         document.querySelector('.invite-label').style.color = 'var(--gold)';
                         setTimeout(() => {
                             document.querySelector('.invite-label').innerText = originalLabel;
@@ -548,7 +480,7 @@ class SequenceGame {
 
                 if (this.started) {
                     this.showGameScreen();
-                    this.log("🔄 Session resumed. Waiting for players to reconnect...");
+                    this.log("≡ƒöä Session resumed. Waiting for players to reconnect...");
                 }
             } else {
                 console.log("Attempting to join session:", roomId);
@@ -615,7 +547,7 @@ class SequenceGame {
                         lockedSequences: this.lockedSequences,
                         lastMove: this.lastMove
                     });
-                    this.log(`♻️ ${name} reconnected.`);
+                    this.log(`ΓÖ╗∩╕Å ${name} reconnected.`);
                 }
                 this.syncPlayers();
             }
@@ -835,7 +767,7 @@ class SequenceGame {
                 delete this.peerNames[conn.peer];
                 this.syncPlayers();
                 if (this.started) {
-                    this.log(`❌ ${leaverName} disconnected.`);
+                    this.log(`Γ¥î ${leaverName} disconnected.`);
                 }
             } else {
                 if (ui) ui.status.innerText = "Connection lost. Attempting reconnect...";
@@ -877,15 +809,15 @@ class SequenceGame {
 
     updateTeamLabels(container) {
         const labels = TEAM_COLORS.slice(0, this.teamCount);
-        const emojis = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
+        const emojis = { red: '≡ƒö┤ Red', blue: '≡ƒö╡ Blue', green: '≡ƒƒó Green' };
         container.innerHTML = labels.map(c =>
             `<span class="team-tag ${c}">${emojis[c]}</span>`
         ).join('');
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // STARTING THE GAME
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     startGame() {
         if (!this.isSinglePlayer && this.peers.length < 1) {
             alert('Need at least 2 players to start!');
@@ -996,7 +928,7 @@ class SequenceGame {
 
         if (this.teamCount >= 3) ui.greenScoreWrap.style.display = 'inline';
 
-        const teamLabelMap = { red: '🔴 Red', blue: '🔵 Blue', green: '🟢 Green' };
+        const teamLabelMap = { red: '≡ƒö┤ Red', blue: '≡ƒö╡ Blue', green: '≡ƒƒó Green' };
         if (ui.myTeamName && this.myColor) {
             ui.myTeamName.innerHTML = `<span class="team-tag ${this.myColor}" style="padding: 2px 8px;">${teamLabelMap[this.myColor]}</span>`;
         }
@@ -1007,8 +939,8 @@ class SequenceGame {
         this.updateTurnUI();
         this.updateScoreUI();
 
-        this.log(`🎨 ${this.myName || 'Player'} on team ${this.myColor.toUpperCase()}`);
-        this.log(`🃏 Cards dealt! ${this.currentTurn} goes first.`);
+        this.log(`≡ƒÄ¿ ${this.myName || 'Player'} on team ${this.myColor.toUpperCase()}`);
+        this.log(`≡ƒâÅ Cards dealt! ${this.currentTurn} goes first.`);
     }
 
     initGameElements() {
@@ -1048,9 +980,9 @@ class SequenceGame {
         }
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // RENDERING
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     renderBoard(forceFullRedraw = false, animateEntrance = false) {
         const ui = this.ui;
         if (!ui.board) return;
@@ -1085,7 +1017,7 @@ class SequenceGame {
                 if (val === 'FREE') {
                     const freeEl = document.createElement('div');
                     freeEl.className = 'cell-card-simple free-space';
-                    freeEl.innerText = '★';
+                    freeEl.innerText = 'Γÿà';
                     cell.appendChild(freeEl);
                 } else {
                     const suit = val.slice(-1);
@@ -1214,12 +1146,12 @@ class SequenceGame {
             if (isOneEye || isTwoEye) {
                 const badge = document.createElement('span');
                 badge.className = 'jack-badge';
-                badge.innerText = isOneEye ? '👁' : '👁👁';
+                badge.innerText = isOneEye ? '≡ƒæü' : '≡ƒæü≡ƒæü';
                 cardEl.appendChild(badge);
             } else if (isDead) {
                 const badge = document.createElement('span');
                 badge.className = 'dead-badge';
-                badge.innerText = '💀';
+                badge.innerText = '≡ƒÆÇ';
                 cardEl.appendChild(badge);
             }
 
@@ -1243,7 +1175,7 @@ class SequenceGame {
 
                     if (dead) {
                         if (this.exchangedThisTurn) {
-                            this.log("⚠ Already exchanged a dead card this turn.");
+                            this.log("ΓÜá Already exchanged a dead card this turn.");
                             return;
                         }
 
@@ -1255,7 +1187,7 @@ class SequenceGame {
                         const suit = card.slice(-1);
                         const cardName = rank + SUITS[suit];
 
-                        this.log(`♻️ Exchanged dead card: ${cardName}`);
+                        this.log(`ΓÖ╗∩╕Å Exchanged dead card: ${cardName}`);
                         this.exchangedThisTurn = true;
 
                         if (this.sendMove) {
@@ -1316,10 +1248,10 @@ class SequenceGame {
 
         // Jack hints
         if (this.jackMode === 'one-eye') {
-            ui.jackHint.innerText = "👁 One-Eyed Jack: Click an opponent's chip to remove it.";
+            ui.jackHint.innerText = "≡ƒæü One-Eyed Jack: Click an opponent's chip to remove it.";
             ui.jackHint.style.display = 'block';
         } else if (this.jackMode === 'two-eye') {
-            ui.jackHint.innerText = "👁👁 Two-Eyed Jack: Click any empty cell to place your chip.";
+            ui.jackHint.innerText = "≡ƒæü≡ƒæü Two-Eyed Jack: Click any empty cell to place your chip.";
             ui.jackHint.style.display = 'block';
         } else {
             ui.jackHint.style.display = 'none';
@@ -1328,7 +1260,7 @@ class SequenceGame {
         // Dead card hints
         if (ui.deadHint) {
             if (this.selectedIsDead && this.currentTurn === this.myColor) {
-                ui.deadHint.innerText = "💀 Dead Card: Click to exchange for a new one.";
+                ui.deadHint.innerText = "≡ƒÆÇ Dead Card: Click to exchange for a new one.";
                 ui.deadHint.style.display = 'block';
             } else {
                 ui.deadHint.style.display = 'none';
@@ -1345,9 +1277,9 @@ class SequenceGame {
         }
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // MOVE HANDLING
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     handleCellClick(r, c) {
         if (this.currentTurn !== this.myColor) return;
         if (this.selectedCardIndex === null) return;
@@ -1363,24 +1295,24 @@ class SequenceGame {
             if (chip && chip !== this.myColor && !this.isChipInSequence(r, c, chip)) {
                 moveType = 'remove';
             } else if (chip && chip !== this.myColor) {
-                this.log("⚠ Cannot remove a chip from a completed sequence.");
+                this.log("ΓÜá Cannot remove a chip from a completed sequence.");
                 return;
             } else {
-                this.log("⚠ One-eyed Jack: Click an opponent's chip.");
+                this.log("ΓÜá One-eyed Jack: Click an opponent's chip.");
                 return;
             }
         } else if (TWO_EYE.has(card)) {
             if (!chip && !isFree) {
                 moveType = 'place';
             } else {
-                this.log("⚠ Two-eyed Jack: Click any empty space.");
+                this.log("ΓÜá Two-eyed Jack: Click any empty space.");
                 return;
             }
         } else {
             if (!isFree && card === cellVal && !chip) {
                 moveType = 'place';
             } else {
-                this.log("⚠ Card doesn't match this cell.");
+                this.log("ΓÜá Card doesn't match this cell.");
                 return;
             }
         }
@@ -1412,7 +1344,7 @@ class SequenceGame {
         const cellSuit = cellVal.slice(-1);
         const cardName = cellRank + SUITS[cellSuit];
         const myName = (this.colorNames && this.colorNames[this.myColor]) || this.myColor;
-        this.log(`${moveType === 'place' ? '✅' : '❌'} ${myName} ${moveType === 'place' ? 'placed on' : 'removed from'} ${cardName}`);
+        this.log(`${moveType === 'place' ? 'Γ£à' : 'Γ¥î'} ${myName} ${moveType === 'place' ? 'placed on' : 'removed from'} ${cardName}`);
 
         // Tell opponents
         this.sendMove({
@@ -1473,7 +1405,7 @@ class SequenceGame {
         if (moveType === 'exchange') {
             if (drew && !newHand && this.deck.length > 0) this.deck.shift();
             const name = (this.colorNames && this.colorNames[color]) || color;
-            this.log(`♻️ ${name} exchanged dead card: ${cardName}`);
+            this.log(`ΓÖ╗∩╕Å ${name} exchanged dead card: ${cardName}`);
             if (this.isHost) this.saveGameState();
             return; // Turn continues for them
         }
@@ -1483,14 +1415,14 @@ class SequenceGame {
 
         const name = (this.colorNames && this.colorNames[color]) || color;
         const displayCard = cardName || `[${row},${col}]`;
-        this.log(`${moveType === 'place' ? '✅' : '❌'} ${name} ${moveType === 'place' ? 'placed on' : 'removed from'} ${displayCard}`);
+        this.log(`${moveType === 'place' ? 'Γ£à' : 'Γ¥î'} ${name} ${moveType === 'place' ? 'placed on' : 'removed from'} ${displayCard}`);
         this.renderBoard();
         this.checkSequences();
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // SEQUENCE DETECTION
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     checkSequences() {
         let updated = false;
         const colors = TEAM_COLORS.slice(0, this.teamCount);
@@ -1523,7 +1455,7 @@ class SequenceGame {
                 });
 
                 this.sequences[color] = this.lockedSequences.filter(ls => ls.color === color).length;
-                this.log(`🎉 ${color} formed sequence #${this.sequences[color]}!`);
+                this.log(`≡ƒÄë ${color} formed sequence #${this.sequences[color]}!`);
                 newlyFormed.push(color);
                 updated = true;
             }
@@ -1535,7 +1467,7 @@ class SequenceGame {
 
         if (winner) {
             this.currentTurn = null;
-            this.log(`🏆 ${winner} wins!`);
+            this.log(`≡ƒÅå ${winner} wins!`);
             this.showWinPopup(winner);
         } else {
             // Only show sequence popups if no one has won yet
@@ -1640,15 +1572,11 @@ class SequenceGame {
         const svg = document.getElementById('sequence-lines');
         if (!svg) return;
 
-        // Cache the SVG bounding rect once outside the loop to prevent layout thrashing
-        const boardRect = svg.getBoundingClientRect();
-
         const points = cells.map(pos => {
             const cell = document.getElementById(`cell-${pos.r}-${pos.c}`);
             if (!cell) return null;
 
-            // Getting bounding rect of each cell still causes slight layout thrashing, 
-            // but caching the boardRect above saves 5 iterations per sequence line.
+            const boardRect = svg.getBoundingClientRect();
             const rect = cell.getBoundingClientRect();
 
             const x = rect.left - boardRect.left + (rect.width / 2);
@@ -1664,9 +1592,9 @@ class SequenceGame {
         svg.appendChild(polyline);
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // AI LOGIC
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     playAITurn() {
         if (this.aiTurnTimeout) {
             clearTimeout(this.aiTurnTimeout);
@@ -1679,7 +1607,7 @@ class SequenceGame {
         if (!playerState || !playerState.peerId || !playerState.peerId.startsWith('COMPUTER_')) return;
 
         const name = (this.colorNames && this.colorNames[myColor]) || 'Computer';
-        this.log(`🤔 ${name} is thinking...`);
+        this.log(`≡ƒñö ${name} is thinking...`);
 
         const hand = playerState.hand;
 
@@ -1745,10 +1673,10 @@ class SequenceGame {
 
                 const rank = deadCard.slice(0, -1);
                 const suit = deadCard.slice(-1);
-                this.log(`♻️ ${name} exchanged dead card: ${rank + SUITS[suit]}`);
+                this.log(`ΓÖ╗∩╕Å ${name} exchanged dead card: ${rank + SUITS[suit]}`);
                 this.checkAndTriggerAITurn();
             } else {
-                this.log(`⚠ ${name} has no valid moves!`);
+                this.log(`ΓÜá ${name} has no valid moves!`);
                 const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
                 this.currentTurn = colors[nextIdx];
                 this.updateTurnUI();
@@ -1774,7 +1702,7 @@ class SequenceGame {
         const suit = cardName.slice(-1);
         const displayName = rank + (SUITS[suit] || suit);
 
-        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} Computer ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
+        this.log(`${type === 'place' ? '≡ƒñûΓ£à' : '≡ƒñûΓ¥î'} Computer ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
 
         const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
         this.currentTurn = colors[nextIdx];
@@ -1889,9 +1817,9 @@ class SequenceGame {
         return this.sequenceGrid[r][c] === true;
     }
 
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     // UI HELPERS
-    // ══════════════════════════════════════
+    // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
     updateTurnUI() {
         const ui = this.ui;
         if (!ui.turnIndicator || !this.currentTurn) return;
@@ -1905,7 +1833,7 @@ class SequenceGame {
             if (navigator.vibrate) navigator.vibrate(200);
         } else {
             const name = (this.colorNames && this.colorNames[this.currentTurn]) || this.currentTurn;
-            ui.turnIndicator.innerText = `⏳ ${name}'s turn…`;
+            ui.turnIndicator.innerText = `ΓÅ│ ${name}'s turnΓÇª`;
         }
         ui.turnIndicator.style.color = mine ? "var(--gold)" : "var(--text)";
         this.updateJackHint();
@@ -1987,5 +1915,5 @@ class SequenceGame {
     }
 }
 
-// ── Boot ──
+// ΓöÇΓöÇ Boot ΓöÇΓöÇ
 new SequenceGame();

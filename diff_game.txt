@@ -1,0 +1,170 @@
+commit 0d467e74a57f54153021b5a7b35c5701655f95b8
+Author: auraweddings <pdeggington@gmail.com>
+Date:   Fri Feb 27 22:17:24 2026 -0800
+
+    put single player back
+
+diff --git a/game.js b/game.js
+index fb09f13..7bf3395 100644
+--- a/game.js
++++ b/game.js
+@@ -231,70 +231,101 @@ class SequenceGame {
+         const savedRoomId = localStorage.getItem('sequence_roomID');
+         const savedIsHost = localStorage.getItem('sequence_isHost');
+ 
++        const initPeer = () => {
++            const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
++            const peerConfig = {
++                config: {
++                    'iceServers': [
++                        { urls: 'stun:stun.l.google.com:19302' },
++                        { urls: 'stun:stun1.l.google.com:19302' },
++                        { urls: 'stun:stun2.l.google.com:19302' },
++                        { urls: 'stun:stun3.l.google.com:19302' },
++                        { urls: 'stun:stun4.l.google.com:19302' }
++                    ]
++                }
++            };
++            this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
++
++            this.peer.on('open', (id) => {
++                if (this.isHost) {
++                    ui.status.innerText = "Waiting for players...";
++                    ui.inviteBox.style.display = 'block';
++                    ui.inviteUrl.value = shareUrl;
++                    ui.inviteUrl.addEventListener('click', () => {
++                        ui.inviteUrl.select();
++                        navigator.clipboard.writeText(shareUrl).then(() => {
++                            const originalLabel = document.querySelector('.invite-label').innerText;
++                            document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
++                            document.querySelector('.invite-label').style.color = 'var(--gold)';
++                            setTimeout(() => {
++                                document.querySelector('.invite-label').innerText = originalLabel;
++                                document.querySelector('.invite-label').style.color = '';
++                            }, 2000);
++                        });
++                    });
++                    ui.teamCfg.style.display = 'block';
++                    this.updateTeamLabels(ui.teamLabels);
++                    renderSetupState();
++                } else {
++                    console.log("Attempting to join session:", roomId);
++                    this.connectToHost(roomId);
++                }
++            });
++
++            if (this.isHost) {
++                this.peer.on('connection', (conn) => {
++                    this.setupConnection(conn);
++                });
++            }
++        };
++
+         if (roomId) {
+             this.isHost = false;
+             ui.status.innerText = "Joining room...";
+             localStorage.setItem('sequence_roomID', roomId);
+             localStorage.setItem('sequence_isHost', 'false');
++            initPeer();
+         } else if (savedRoomId && savedIsHost === 'true') {
+             roomId = savedRoomId;
+             window.location.hash = roomId;
+             this.isHost = true;
+             ui.status.innerText = "Re-hosting room...";
++            initPeer();
+         } else {
+-            roomId = genId(8);
+-            window.location.hash = roomId;
+-            this.isHost = true;
+-            ui.status.innerText = "Room created!";
+-            localStorage.setItem('sequence_roomID', roomId);
+-            localStorage.setItem('sequence_isHost', 'true');
+-        }
++            ui.status.innerText = "";
++            ui.createSec.style.display = "block";
++
++            ui.createBtn.onclick = () => {
++                ui.createSec.style.display = "none";
++                roomId = genId(8);
++                window.location.hash = roomId;
++                this.isHost = true;
++                ui.status.innerText = "Room created!";
++                localStorage.setItem('sequence_roomID', roomId);
++                localStorage.setItem('sequence_isHost', 'true');
++                initPeer();
++            };
+ 
+-        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
++            ui.playSingleBtn.onclick = () => {
++                this.isHost = true;
++                this.teamCount = 2; // Default for single player
++                this.started = true;
++                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
++                this.sequences = { red: 0, blue: 0, green: 0 };
++                this.deck = this.createDeck();
++                this.shuffle(this.deck);
++                this.hand = this.deck.splice(0, 7);
++                this.myColor = 'red';
++                this.currentTurn = 'red';
+ 
+-        const peerConfig = {
+-            config: {
+-                'iceServers': [
+-                    { urls: 'stun:stun.l.google.com:19302' },
+-                    { urls: 'stun:stun1.l.google.com:19302' },
+-                    { urls: 'stun:stun2.l.google.com:19302' },
+-                    { urls: 'stun:stun3.l.google.com:19302' },
+-                    { urls: 'stun:stun4.l.google.com:19302' }
+-                ]
+-            }
+-        };
+-        this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
++                document.getElementById('setup-screen').style.display = 'none';
++                document.getElementById('game-screen').style.display = 'block';
++                document.getElementById('connection-status').style.display = 'none'; // Hide multiplayer scores/sync
+ 
+-        this.peer.on('open', (id) => {
+-            if (this.isHost) {
+-                ui.status.innerText = "Waiting for players...";
+-                ui.inviteBox.style.display = 'block';
+-                ui.inviteUrl.value = shareUrl;
+-                ui.inviteUrl.addEventListener('click', () => {
+-                    ui.inviteUrl.select();
+-                    navigator.clipboard.writeText(shareUrl).then(() => {
+-                        const originalLabel = document.querySelector('.invite-label').innerText;
+-                        document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
+-                        document.querySelector('.invite-label').style.color = 'var(--gold)';
+-                        setTimeout(() => {
+-                            document.querySelector('.invite-label').innerText = originalLabel;
+-                            document.querySelector('.invite-label').style.color = '';
+-                        }, 2000);
+-                    });
+-                });
+-                ui.teamCfg.style.display = 'block';
+-                this.updateTeamLabels(ui.teamLabels);
+-                renderSetupState();
+-            } else {
+-                console.log("Attempting to join session:", roomId);
+-                this.connectToHost(roomId);
+-            }
+-        });
+-
+-        if (this.isHost) {
+-            this.peer.on('connection', (conn) => {
+-                this.setupConnection(conn);
+-            });
++                this.renderBoard();
++                this.renderHand();
++                this.updateTurnUI();
++            };
+         }
+ 
+         this.sendName = (name) => this.broadcast('name', name);
+@@ -368,6 +399,7 @@ class SequenceGame {
+ 
+ 
+ 
++
+         document.querySelectorAll('.team-btn').forEach(btn => {
+             btn.onmousedown = () => { // focus fix
+                 document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));

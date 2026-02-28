@@ -1,0 +1,255 @@
+commit 32e9527e87e0b9fa9f79ec035817b8409ad3355c
+Author: auraweddings <pdeggington@gmail.com>
+Date:   Wed Feb 25 21:35:51 2026 -0800
+
+    Enhance single-player AI & team setup
+    
+    Replace the previous hardcoded AI peer with dynamic single-player setup: create COMPUTER_x bots for missing teams, populate peerNames/playerIDMap, and allow team selection for 1v1 or 1v1v1. Adjust dealing logic to compute assignments, cards per player and win target from actual assignments. Improve AI turn handling so it uses the currentTurn color and only acts for COMPUTER_ peers; update move placement/removal to use that color and advance turns correctly. Revise evaluateMove to consider multiple opponents (aggregate opponent stats), better blocking detection and scoring heuristics. Minor UI text update: show “(1v1 or 1v1v1)” on single-player setup heading.
+
+diff --git a/game.js b/game.js
+index ab3db74..3565750 100644
+--- a/game.js
++++ b/game.js
+@@ -218,9 +218,9 @@ class SequenceGame {
+                 this.isHost = true; // Act as host for game logic
+ 
+                 // Set up peers array manually (empty peer for the AI)
+-                this.peers = ['AI_BOT'];
+-                this.peerNames = { 'AI_BOT': 'AI Bot' };
+-                this.playerIDMap = { 'AI_BOT': 'bot-1234' };
++                this.peers = [];
++                this.peerNames = {};
++                this.playerIDMap = {};
+ 
+                 // Show options instead of starting
+                 ui.createSec.style.display = 'none';
+@@ -228,6 +228,7 @@ class SequenceGame {
+                 ui.teamCfg.classList.add('single-player-setup');
+                 ui.startBtn.style.display = 'block';
+ 
++                // Allow team selection for 1v1 or 1v1v1
+                 this.updateTeamLabels(ui.teamLabels);
+             });
+         }
+@@ -719,28 +720,40 @@ class SequenceGame {
+         this.shuffle(this.deck);
+ 
+         const colors = TEAM_COLORS.slice(0, this.teamCount);
+-        const totalPlayers = this.peers.length + 1;
+-        const cardsPerPlayer = totalPlayers <= 2 ? 7 : totalPlayers <= 4 ? 6 : 5;
+-        this.winTarget = (totalPlayers > 2 && this.teamCount === 3) ? 1 : 2;
+-
+         const assignments = [];
+         assignments.push({ peerId: null, playerID: this.playerID, color: colors[0], name: this.myName || 'Host' });
+-        this.peers.forEach((pid, i) => {
+-            assignments.push({
+-                peerId: pid,
+-                playerID: this.playerIDMap[pid] || 'unknown-' + pid,
+-                color: colors[(i + 1) % colors.length],
+-                name: this.peerNames[pid] || 'Player ' + (i + 2)
+-            });
+-        });
+ 
+-        // Build color → name map
+-        this.colorNames = {};
+-        assignments.forEach(a => {
+-            this.colorNames[a.color] = a.name;
+-        });
++        if (this.isSinglePlayer) {
++            // Add automated computers for remaining teams
++            for (let i = 1; i < this.teamCount; i++) {
++                const botId = `bot-${i}`;
++                const botPeer = `COMPUTER_${i}`;
++                assignments.push({
++                    peerId: botPeer,
++                    playerID: botId,
++                    color: colors[i],
++                    name: 'Computer'
++                });
++                this.peerNames[botPeer] = 'Computer';
++                this.playerIDMap[botPeer] = botId;
++            }
++            this.peers = assignments.filter(a => a.peerId).map(a => a.peerId);
++        } else {
++            this.peers.forEach((pid, i) => {
++                assignments.push({
++                    peerId: pid,
++                    playerID: this.playerIDMap[pid] || 'unknown-' + pid,
++                    color: colors[(i + 1) % colors.length],
++                    name: this.peerNames[pid] || 'Player ' + (i + 2)
++                });
++            });
++        }
+ 
+         // Deal hands and store in playerStates
++        const totalPlayers = assignments.length;
++        const cardsPerPlayer = totalPlayers <= 2 ? 7 : totalPlayers <= 4 ? 6 : 5;
++        this.winTarget = (totalPlayers > 2 && this.teamCount === 3) ? 1 : 2;
++
+         this.playerStates = {};
+         assignments.forEach(a => {
+             const hand = this.deck.splice(0, cardsPerPlayer);
+@@ -1180,8 +1193,11 @@ class SequenceGame {
+         this.updateJackHint();
+         this.checkSequences();
+ 
+-        if (this.isSinglePlayer && this.currentTurn && this.currentTurn !== this.myColor) {
+-            setTimeout(() => this.playAITurn(), 1500);
++        if (this.isSinglePlayer && this.currentTurn) {
++            const playerState = Object.values(this.playerStates).find(s => s.color === this.currentTurn);
++            if (playerState && playerState.peerId && playerState.peerId.startsWith('COMPUTER_')) {
++                setTimeout(() => this.playAITurn(), 1500);
++            }
+         }
+     }
+ 
+@@ -1294,11 +1310,12 @@ class SequenceGame {
+     // AI LOGIC
+     // ══════════════════════════════════════
+     playAITurn() {
+-        if (this.currentTurn !== 'blue') return; // AI is currently always 'blue'
++        const colors = TEAM_COLORS.slice(0, this.teamCount);
++        const myColor = this.currentTurn;
++        const playerState = Object.values(this.playerStates).find(s => s.color === myColor);
++        if (!playerState || !playerState.peerId || !playerState.peerId.startsWith('COMPUTER_')) return;
+ 
+-        const aiPlayerID = this.playerIDMap['AI_BOT'];
+-        const aiState = this.playerStates[aiPlayerID];
+-        const hand = aiState.hand;
++        const hand = playerState.hand;
+ 
+         let bestMove = null;
+         let bestScore = -Infinity;
+@@ -1315,7 +1332,7 @@ class SequenceGame {
+                 for (let r = 0; r < 10; r++) {
+                     for (let c = 0; c < 10; c++) {
+                         const chip = this.chips[r][c];
+-                        if (chip && chip !== 'blue' && !this.isChipInSequence(r, c, chip)) {
++                        if (chip && chip !== myColor && !this.isChipInSequence(r, c, chip)) {
+                             possibleCells.push({ r, c, type: 'remove' });
+                         }
+                     }
+@@ -1342,7 +1359,7 @@ class SequenceGame {
+             }
+ 
+             for (const cell of possibleCells) {
+-                const score = this.evaluateMove(cell.r, cell.c, cell.type, 'blue');
++                const score = this.evaluateMove(cell.r, cell.c, cell.type, myColor);
+                 const jitter = Math.random() * 0.1;
+                 const finalScore = score + jitter;
+ 
+@@ -1365,8 +1382,9 @@ class SequenceGame {
+                 this.log(`♻️ AI exchanged dead card: ${rank + SUITS[suit]}`);
+                 setTimeout(() => this.playAITurn(), 1500);
+             } else {
+-                this.log("⚠ AI has no valid moves!");
+-                this.currentTurn = 'red';
++                this.log("⚠ Computer has no valid moves!");
++                const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
++                this.currentTurn = colors[nextIdx];
+                 this.updateTurnUI();
+             }
+             return;
+@@ -1374,7 +1392,7 @@ class SequenceGame {
+ 
+         const { r, c, cardIndex, type, cardName } = bestMove;
+ 
+-        this.chips[r][c] = type === 'place' ? 'blue' : null;
++        this.chips[r][c] = type === 'place' ? myColor : null;
+         if (type === 'place') {
+             this.lastMove = { r, c };
+         } else {
+@@ -1389,49 +1407,75 @@ class SequenceGame {
+         const suit = cardName.slice(-1);
+         const displayName = rank + (SUITS[suit] || suit);
+ 
+-        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} AI Bot ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
++        this.log(`${type === 'place' ? '🤖✅' : '🤖❌'} Computer ${type === 'place' ? 'placed on' : 'removed from'} ${displayName}`);
+ 
+-        this.currentTurn = 'red';
++        const nextIdx = (colors.indexOf(myColor) + 1) % colors.length;
++        this.currentTurn = colors[nextIdx];
+         this.renderBoard();
+         this.updateTurnUI();
+         this.checkSequences();
+     }
+ 
+     evaluateMove(r, c, type, color) {
+-        const opponent = color === 'blue' ? 'red' : 'blue';
++        const colors = TEAM_COLORS.slice(0, this.teamCount);
++        const opponents = colors.filter(clr => clr !== color);
+         const testChips = this.chips.map(row => [...row]);
+ 
+         const countsBefore = this.getLineStats(testChips, color);
+-        const oppBefore = this.getLineStats(testChips, opponent);
++
++        // Sum of all opponents' stats
++        let oppsBefore = { seqs: 0, max4: 0, max3: 0, max2: 0 };
++        opponents.forEach(opp => {
++            const stats = this.getLineStats(testChips, opp);
++            oppsBefore.seqs += stats.seqs;
++            oppsBefore.max4 += stats.max4;
++            oppsBefore.max3 += stats.max3;
++            oppsBefore.max2 += stats.max2;
++        });
+ 
+         testChips[r][c] = type === 'place' ? color : null;
+ 
+         const countsAfter = this.getLineStats(testChips, color);
+-        const oppAfter = this.getLineStats(testChips, opponent);
++
++        let oppsAfter = { seqs: 0, max4: 0, max3: 0, max2: 0 };
++        opponents.forEach(opp => {
++            const stats = this.getLineStats(testChips, opp);
++            oppsAfter.seqs += stats.seqs;
++            oppsAfter.max4 += stats.max4;
++            oppsAfter.max3 += stats.max3;
++            oppsAfter.max2 += stats.max2;
++        });
+ 
+         let score = 0;
+ 
+         if (type === 'place') {
+             if (countsAfter.seqs > countsBefore.seqs) score += 10000;
+             else {
+-                testChips[r][c] = opponent;
+-                const oppIfPlayed = this.getLineStats(testChips, opponent);
+-                if (oppIfPlayed.seqs > oppBefore.seqs) {
++                // Check if this move blocks any opponent from finishing a sequence
++                let blockedAnySeq = false;
++                opponents.forEach(opp => {
++                    testChips[r][c] = opp;
++                    const oppIfPlayed = this.getLineStats(testChips, opp);
++                    const statsBefore = this.getLineStats(this.chips, opp);
++                    if (oppIfPlayed.seqs > statsBefore.seqs) blockedAnySeq = true;
++                });
++
++                if (blockedAnySeq) {
+                     score += 8000;
+                 } else {
+-                    score += (oppIfPlayed.max4 - oppBefore.max4) * 800;
+-                    score += (oppIfPlayed.max3 - oppBefore.max3) * 50;
+-                }
++                    // Score based on blocking opponent's progress and making our own
++                    score += (oppsBefore.max4 - oppsAfter.max4) * 800; // Blocking opponent 4-in-a-row
++                    score += (oppsBefore.max3 - oppsAfter.max3) * 50;
+ 
+-                testChips[r][c] = color;
+-                score += (countsAfter.max4 - countsBefore.max4) * 100;
+-                score += (countsAfter.max3 - countsBefore.max3) * 10;
+-                score += (countsAfter.max2 - countsBefore.max2) * 1;
++                    score += (countsAfter.max4 - countsBefore.max4) * 100;
++                    score += (countsAfter.max3 - countsBefore.max3) * 10;
++                    score += (countsAfter.max2 - countsBefore.max2) * 1;
++                }
+             }
+         } else if (type === 'remove') {
+-            score += (oppBefore.max4 - oppAfter.max4) * 800;
+-            score += (oppBefore.max3 - oppAfter.max3) * 150;
+-            score += (oppBefore.max2 - oppAfter.max2) * 20;
++            score += (oppsBefore.max4 - oppsAfter.max4) * 800;
++            score += (oppsBefore.max3 - oppsAfter.max3) * 150;
++            score += (oppsBefore.max2 - oppsAfter.max2) * 20;
+         }
+ 
+         const centerDist = Math.abs(r - 4.5) + Math.abs(c - 4.5);

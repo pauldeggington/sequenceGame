@@ -9,8 +9,9 @@ skip_to = None
 
 for i, line in enumerate(lines):
     # Skip lines if we are replacing a block
-    if skip_to is not None:
-        if i < skip_to:
+    current_skip_to = skip_to
+    if current_skip_to is not None:
+        if i < current_skip_to:
             continue
         else:
             skip_to = None
@@ -99,6 +100,7 @@ for i, line in enumerate(lines):
 
         const initPeer = () => {
             const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
+
             const peerConfig = {
                 config: {
                     'iceServers': [
@@ -173,24 +175,22 @@ for i, line in enumerate(lines):
             };
             
             ui.playSingleBtn.onclick = () => {
-                this.isHost = true;
-                this.teamCount = 2; // Default for single player
-                this.started = true;
-                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-                this.sequences = { red: 0, blue: 0, green: 0 };
-                this.deck = this.createDeck();
-                this.shuffle(this.deck);
-                this.hand = this.deck.splice(0, 7);
-                this.myColor = 'red';
-                this.currentTurn = 'red';
-                
-                document.getElementById('setup-screen').style.display = 'none';
-                document.getElementById('game-screen').style.display = 'block';
-                document.getElementById('connection-status').style.display = 'none'; // Hide multiplayer scores/sync
-                
-                this.renderBoard();
-                this.renderHand();
-                this.updateTurnUI();
+                this.isSinglePlayer = true;
+                this.isHost = true; // Act as host for game logic
+
+                // Set up peers array manually (empty peer for the AI will be built by startGame)
+                this.peers = [];
+                this.peerNames = {};
+                this.playerIDMap = {};
+
+                // Show options instead of starting
+                ui.createSec.style.display = 'none';
+                ui.teamCfg.style.display = 'block';
+                ui.teamCfg.classList.add('single-player-setup');
+                ui.startBtn.style.display = 'block';
+
+                // Allow team selection for 1v1 or 1v1v1
+                this.updateTeamLabels(ui.teamLabels);
             };
         }
 
