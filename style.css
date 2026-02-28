@@ -499,8 +499,8 @@ body {
 }
 
 .sidebar {
-    width: 160px;
-    /* Standard vertical banner width */
+    width: 300px;
+    /* Expanded for standard vertical ad banners */
     height: 100%;
     background: var(--bg-color);
     /* Solid 100% opacity */
@@ -522,7 +522,7 @@ body {
 }
 
 .ad-placeholder {
-    width: 120px;
+    width: 250px;
     height: 600px;
     background: rgba(255, 255, 255, 0.05);
     border: 2px dashed rgba(255, 255, 255, 0.1);
