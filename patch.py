@@ -2,67 +2,87 @@ import os
 import textwrap
 
 # Robustly patch game.js for Sequence multiplayer/host migration
-# This script is designed to be idempotent.
+# This script is designed to be fully idempotent and reconstruct the class if parts are missing.
 with open('game.js', 'r', encoding='utf-8') as f:
     lines = f.readlines()
 
 new_lines = []
 skip_to = None
 
-# Helper to check if a line (or part of it) already exists in a range
-def is_already_present(target_parts, search_lines):
-    for l in search_lines:
-        if all(part in l for part in target_parts):
-            return True
-    return False
+# Helper to check if a block already exists
+def is_block_present(marker, search_lines):
+    return any(marker in l for l in search_lines)
 
-for i, line in enumerate(lines):
-    # Skip lines if we are replacing a block
-    if skip_to is not None:
-        if i < skip_to:
-            continue
-        else:
-            skip_to = None
+# Define the intended constructor logic
+constructor_logic = textwrap.dedent("""\
+    constructor() {
+        this.board = BOARD_LAYOUT;
+        this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
+        this.playerID = localStorage.getItem('sequence_playerID') || genId(12);
+        localStorage.setItem('sequence_playerID', this.playerID);
+        
+        this.ui = {
+            setupScreen: document.getElementById('setup-screen'),
+            gameScreen: document.getElementById('game-screen'),
+            status: document.getElementById('setup-status'),
+            nameInput: document.getElementById('player-name'),
+            createSec: document.getElementById('create-game-section'),
+            createBtn: document.getElementById('create-game-btn'),
+            playSingleBtn: document.getElementById('play-single-btn'),
+            inviteBox: document.getElementById('invite-box'),
+            inviteUrl: document.getElementById('invite-url'),
+            teamCfg: document.getElementById('team-config'),
+            teamLabels: document.getElementById('team-labels'),
+            playerList: document.getElementById('player-list'),
+            playersEl: document.getElementById('players-connected'),
+            startBtn: document.getElementById('start-game-btn'),
+            waitMsg: document.getElementById('waiting-msg'),
+            board: document.getElementById('game-board'),
+            hand: document.getElementById('player-hand'),
+            logContent: document.getElementById('log-content'),
+            turnIndicator: document.getElementById('turn-indicator'),
+            redScore: document.getElementById('red-score'),
+            blueScore: document.getElementById('blue-score'),
+            greenScore: document.getElementById('green-score'),
+            greenScoreWrap: document.getElementById('green-score-wrap'),
+            myTeamName: document.getElementById('my-team-name'),
+            turnOverlay: document.getElementById('turn-overlay'),
+            gameOverOverlay: document.getElementById('game-over-overlay'),
+            winnerDisplay: document.getElementById('winner-text'),
+            playAgainBtn: document.getElementById('play-again-btn'),
+            playAgainWaiting: document.getElementById('play-again-waiting'),
+            seqLines: document.getElementById('sequence-lines'),
+            emojiTrigger: document.getElementById('emoji-trigger'),
+            emojiMenu: document.getElementById('emoji-menu'),
+            emojiFloatContainer: document.getElementById('emoji-float-container')
+        };
 
-    # Replace networking imports
-    if "import { joinRoom, selfId } from 'https://esm.run/trystero';" in line:
-        new_lines.append("// Networking now uses PeerJS loaded via <script> tag in index.html\n")
-        continue
+        this.peer = null;
+        this.connections = {};
+        this.hostConnection = null;
+        this.isHost = false;
+        this.myColor = null;
+        this.currentTurn = null;
+        this.selectedCardIndex = null;
+        this.sequences = { red: 0, blue: 0, green: 0 };
+        this.jackMode = null;
+        this.teamCount = 2;
+        this.peers = [];         // connected peer IDs
+        this.peerNames = {};     // peerId -> name
+        this.myName = '';
+        this.started = false;
+        this.hintsEnabled = false;
+        this.hoveredCardIndex = null;
+        this.hands = {};         // For reconnects, host saves all hands dealt
+        this.hostStateBackup = null; // Backup of the game state for migration
 
-    # Initialize new properties in constructor
-    if "this.room = null;" in line:
-        new_lines.append(line)
-        props = [
-            "        this.peer = null;\n",
-            "        this.connections = {};\n",
-            "        this.hostConnection = null;\n",
-            "        this.isHost = false;\n",
-            "        this.myColor = null;\n",
-            "        this.currentTurn = null;\n",
-            "        this.selectedCardIndex = null;\n",
-            "        this.sequences = { red: 0, blue: 0, green: 0 };\n",
-            "        this.jackMode = null;\n",
-            "        this.teamCount = 2;\n",
-            "        this.peers = [];         // connected peer IDs\n",
-            "        this.peerNames = {};     // peerId -> name\n",
-            "        this.myName = '';\n",
-            "        this.started = false;\n",
-            "        this.hintsEnabled = false;\n",
-            "        this.hoveredCardIndex = null;\n",
-            "        this.hands = {};         // For reconnects, host saves all hands dealt\n",
-            "        this.hostStateBackup = null; // Backup of the game state for migration\n"
-        ]
-        # Only add props that aren't already there in the next few lines
-        next_chunk = "".join(lines[i+1:i+25])
-        for p in props:
-            if p.strip() not in next_chunk:
-                new_lines.append(p)
-        continue
+        this.initSetup();
+    }
+""")
 
-    # robust initSetup replacement
-    if "    initSetup() {" in line:
-        new_lines.append(line)
-        setup_logic = textwrap.dedent("""\
+# Define the intended initSetup logic
+setup_logic = textwrap.dedent("""\
+    initSetup() {
         const ui = this.ui;
 
         this.syncPlayers = () => {
@@ -237,27 +257,41 @@ for i, line in enumerate(lines):
                 }
             }
         });
-        """)
-        # Indent each line by 8 spaces to correctly align in the class
-        setup_logic_indented = "\n".join("        " + l if l else l for l in setup_logic.split("\n"))
-        new_lines.append(setup_logic_indented + "\n")
-        
-        # Skip until updateTeamLabels (the end of the setup block)
-        try:
-            target_idx = [idx for idx, l in enumerate(lines) if "    updateTeamLabels(container) {" in l][0]
-            skip_to = target_idx
-        except:
-            # Fallback if marker not found
-            skip_to = i + 1
+    }
+""")
+
+class_found = False
+for i, line in enumerate(lines):
+    if skip_to is not None:
+        if i < skip_to: continue
+        else: skip_to = None
+
+    # Replace networking imports
+    if "import { joinRoom, selfId } from 'https://esm.run/trystero';" in line:
+        new_lines.append("// Networking now uses PeerJS loaded via <script> tag in index.html\n")
         continue
 
-    # Check for SequenceGame class start to inject methods
-    if "SequenceGame {" in line:
+    # Main Class Injection
+    if "class SequenceGame {" in line:
         new_lines.append(line)
-        # Only inject if not already there
-        if "// ── Peer events ──" not in lines[i+1]:
+        class_found = True
+        
+        # 1. Inject Constructor if missing
+        if not is_block_present("constructor() {", lines[i:i+50]):
+            new_lines.append(constructor_logic + "\n")
+        
+        # 2. Inject initSetup if missing
+        if not is_block_present("initSetup() {", lines):
+            new_lines.append(setup_logic + "\n")
+        
+        # 3. Inject Peer events marker and methods if missing
+        if not is_block_present("// ── Peer events ──", lines):
             new_lines.append("    // ── Peer events ──\n")
-            new_methods = textwrap.dedent("""\
+            # We'll inject the peer methods here if they are missing
+            # (But they might already be in the file, so we check)
+            if not is_block_present("startSession(roomId, isHost) {", lines):
+                # Using the massive methods block from before
+                methods = textwrap.dedent("""\
     startSession(roomId, isHost) {
         this.isHost = isHost;
         this.currentRoomId = roomId;
@@ -780,36 +814,15 @@ for i, line in enumerate(lines):
         this.broadcast('sync', data);
     }
             """)
-            # Indent each line by 4 spaces
-            new_methods_indented = ""
-            for i2, line2 in enumerate(new_methods.split('\n')):
-                if line2 == "    }":
-                    new_methods_indented += "    }\n\n"
-                else:
-                    new_methods_indented += "    " + line2 + "\n"
-            new_lines.append(new_methods_indented)
-            
-            # Skip until updateTeamLabels
-            try:
-                target_idx = [idx for idx, l in enumerate(lines) if "    updateTeamLabels(container) {" in l][0]
-                skip_to = target_idx
-            except:
-                skip_to = i + 1
-        continue
-
-    # Restore hands on host for reconnect logic
-    if "        this.hand = hands['host'];" in line:
-        new_lines.append("        this.hands = hands;\n")
-        new_lines.append(line)
+                # Indent methods
+                new_lines.append("\n".join("    " + l if l else l for l in methods.split("\n")) + "\n")
         continue
 
     # Periodic game state backup broadcast for migration
     if "localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(state));" in line:
         new_lines.append(line)
-        # Check if next line already has the broadcast
-        if i + 1 < len(lines) and "this.broadcast('hostStateBackup', state);" in lines[i+1]:
-            continue
-        new_lines.append("        this.broadcast('hostStateBackup', state);\n")
+        if i + 1 < len(lines) and "this.broadcast('hostStateBackup', state);" not in lines[i+1]:
+            new_lines.append("        this.broadcast('hostStateBackup', state);\n")
         continue
 
     new_lines.append(line)
@@ -817,3 +830,5 @@ for i, line in enumerate(lines):
 # Write out the patched file
 with open('game.js', 'w', encoding='utf-8') as f:
     f.writelines(new_lines)
+
+print("Patching complete.")
