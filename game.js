@@ -117,6 +117,7 @@ class SequenceGame {
         this.teamCount = 2;
         this.peers = [];         // connected peer IDs
         this.peerNames = {};     // peerId -> name
+        this.playerIDMap = {};   // peerId -> playerID
         this.myName = '';
         this.started = false;
         this.hintsEnabled = false;
