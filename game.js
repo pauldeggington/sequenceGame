@@ -219,9 +219,26 @@ class SequenceGame {
             renderSetupState();
         };
 
+        const renderSetupState = () => {
+            playersEl.innerHTML = '';
+            const myDisplay = this.myName || 'You';
+            const me = document.createElement('div');
+            me.className = 'player-entry me';
+            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
+            playersEl.appendChild(me);
+
+            this.peers.forEach((pid, i) => {
+                const el = document.createElement('div');
+                el.className = 'player-entry';
+                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
+                el.innerText = `👤 ${peerName}`;
+                playersEl.appendChild(el);
+            });
+        };
+
         // Name input
-        nameInput.addEventListener('input', () => {
-            this.myName = nameInput.value.trim();
+        ui.nameInput.addEventListener('input', () => {
+            this.myName = ui.nameInput.value.trim();
             this.broadcast('name', this.myName);
             renderSetupState();
         });
@@ -232,19 +249,19 @@ class SequenceGame {
 
         if (roomId) {
             this.isHost = false;
-            statusEl.innerText = "Joining room...";
+            ui.status.innerText = "Joining room...";
             localStorage.setItem('sequence_roomID', roomId);
             localStorage.setItem('sequence_isHost', 'false');
         } else if (savedRoomId && savedIsHost === 'true') {
             roomId = savedRoomId;
             window.location.hash = roomId;
             this.isHost = true;
-            statusEl.innerText = "Re-hosting room...";
+            ui.status.innerText = "Re-hosting room...";
         } else {
             roomId = genId(8);
             window.location.hash = roomId;
             this.isHost = true;
-            statusEl.innerText = "Room created!";
+            ui.status.innerText = "Room created!";
             localStorage.setItem('sequence_roomID', roomId);
             localStorage.setItem('sequence_isHost', 'true');
         }
@@ -266,11 +283,11 @@ class SequenceGame {
 
         this.peer.on('open', (id) => {
             if (this.isHost) {
-                statusEl.innerText = "Waiting for players...";
-                inviteBox.style.display = 'block';
-                inviteUrl.value = shareUrl;
-                inviteUrl.addEventListener('click', () => {
-                    inviteUrl.select();
+                ui.status.innerText = "Waiting for players...";
+                ui.inviteBox.style.display = 'block';
+                ui.inviteUrl.value = shareUrl;
+                ui.inviteUrl.addEventListener('click', () => {
+                    ui.inviteUrl.select();
                     navigator.clipboard.writeText(shareUrl).then(() => {
                         const originalLabel = document.querySelector('.invite-label').innerText;
                         document.querySelector('.invite-label').innerText = '📋 Copied to clipboard!';
@@ -281,8 +298,8 @@ class SequenceGame {
                         }, 2000);
                     });
                 });
-                teamCfg.style.display = 'block';
-                this.updateTeamLabels(teamLabels);
+                ui.teamCfg.style.display = 'block';
+                this.updateTeamLabels(ui.teamLabels);
                 renderSetupState();
             } else {
                 console.log("Attempting to join session:", roomId);
@@ -313,15 +330,15 @@ class SequenceGame {
                     document.querySelectorAll('.team-btn').forEach(btn => {
                         btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
                     });
-                    this.updateTeamLabels(teamLabels);
+                    this.updateTeamLabels(ui.teamLabels);
                 }
                 if (data.hintsEnabled !== undefined) {
                     this.hintsEnabled = data.hintsEnabled;
                     const toggle = document.getElementById('show-hints-toggle');
                     if (toggle) toggle.checked = this.hintsEnabled;
                 }
-                teamCfg.style.display = 'block';
-                playerList.style.display = 'block';
+                ui.teamCfg.style.display = 'block';
+                ui.playerList.style.display = 'block';
             } else if (type === 'gameStart') {
                 this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
                 this.sequences = { red: 0, blue: 0, green: 0 };
@@ -362,6 +379,7 @@ class SequenceGame {
 
         // ── Setup UI ──
         // Team buttons
+
 
 
         document.querySelectorAll('.team-btn').forEach(btn => {
