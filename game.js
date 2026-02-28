@@ -327,69 +327,7 @@ class SequenceGame {
             };
         }
 
-        this.sendName = (name) => this.broadcast('name', name);
-        this.sendConfig = (config) => this.broadcast('config', config);
-        this.sendGameStart = (data, pId) => pId ? this.sendTo(pId, 'gameStart', data) : this.broadcast('gameStart', data);
-        this.sendMove = (data) => this.broadcast('move', data);
-        this.sendSync = (data) => this.broadcast('sync', data);
 
-        this.handleData = (type, data, peerId) => {
-            if (type === 'name') {
-                this.peerNames[peerId] = data;
-                renderSetupState();
-                if (this.isHost) this.broadcast('name', data, peerId);
-            } else if (type === 'config' && !this.isHost) {
-                if (data.teamCount) {
-                    this.teamCount = data.teamCount;
-                    document.querySelectorAll('.team-btn').forEach(btn => {
-                        btn.classList.toggle('selected', parseInt(btn.dataset.teams) === this.teamCount);
-                    });
-                    this.updateTeamLabels(ui.teamLabels);
-                }
-                if (data.hintsEnabled !== undefined) {
-                    this.hintsEnabled = data.hintsEnabled;
-                    const toggle = document.getElementById('show-hints-toggle');
-                    if (toggle) toggle.checked = this.hintsEnabled;
-                }
-                ui.teamCfg.style.display = 'block';
-                ui.playerList.style.display = 'block';
-            } else if (type === 'gameStart') {
-                this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
-                this.sequences = { red: 0, blue: 0, green: 0 };
-                document.getElementById('game-over-overlay').style.display = 'none';
-                document.getElementById('play-again-waiting').style.display = 'none';
-
-                this.deck = data.deck;
-                this.hand = data.myHand;
-                this.myColor = data.myColor;
-                this.currentTurn = data.currentTurn;
-                this.teamCount = data.teamCount;
-                this.colorNames = data.colorNames || {};
-                this.hintsEnabled = data.hintsEnabled || false;
-                this.started = true;
-                this.showGameScreen();
-
-                if (data.boardChips) {
-                    this.chips = data.boardChips;
-                    this.sequences = data.sequences || { red: 0, blue: 0, green: 0 };
-                    this.renderBoard();
-                    this.updateScoreUI();
-                }
-            } else if (type === 'move') {
-                this.applyOpponentMove(data);
-                this.currentTurn = data.nextTurn;
-                this.updateTurnUI();
-                if (this.isHost) this.broadcast('move', data, peerId);
-            } else if (type === 'sync') {
-                this.sequences = data.sequences;
-                this.updateScoreUI();
-                this.renderBoard();
-                if (data.winner) {
-                    this.currentTurn = null;
-                    this.showWinPopup(data.winner);
-                }
-            }
-        };
 
         // ── Setup UI ──
         // Team buttons
@@ -593,6 +531,20 @@ class SequenceGame {
         if (type === 'join') {
             if (this.isHost) {
                 const { name, playerID } = data;
+
+                // Remove ghost connections for the same playerID
+                for (const pid of [...this.peers]) {
+                    if (pid !== peerId && this.playerIDMap[pid] === playerID) {
+                        this.peers = this.peers.filter(p => p !== pid);
+                        delete this.playerIDMap[pid];
+                        delete this.peerNames[pid];
+                        if (this.connections[pid]) {
+                            this.connections[pid].close();
+                            delete this.connections[pid];
+                        }
+                    }
+                }
+
                 this.playerIDMap[peerId] = playerID;
                 this.peerNames[peerId] = name;
 
@@ -878,6 +830,36 @@ class SequenceGame {
     sendEmoji(emoji) {
         if (this.isSinglePlayer) return;
         this.broadcast('emoji', emoji);
+    }
+
+    sendJoin() {
+        if (!this.isSinglePlayer && this.hostConnection && this.hostConnection.open) {
+            this.hostConnection.send({ type: 'join', data: { name: this.myName, playerID: this.playerID } });
+        }
+    }
+
+    sendName(name) {
+        this.broadcast('name', name);
+    }
+
+    sendConfig(config) {
+        this.broadcast('config', config);
+    }
+
+    sendGameStart(data, pId) {
+        if (pId) {
+            this.sendTo(pId, 'gameStart', data);
+        } else {
+            this.broadcast('gameStart', data);
+        }
+    }
+
+    sendMove(data) {
+        this.broadcast('move', data);
+    }
+
+    sendSync(data) {
+        this.broadcast('sync', data);
     }
 
     updateTeamLabels(container) {
