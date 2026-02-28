@@ -533,6 +533,7 @@ class SequenceGame {
                 this.lastMove = data.lastMove || null;
                 this.renderBoard();
                 this.updateScoreUI();
+                this.redrawSequenceLines();
             }
         } else if (type === 'move') {
             this.applyOpponentMove(data, peerId);
@@ -546,6 +547,12 @@ class SequenceGame {
             if (this.isHost) {
                 this.broadcast('move', data, peerId);
                 this.saveGameState();
+            } else if (this.hostStateBackup) {
+                // Keep backup fresh for potential takeover
+                this.hostStateBackup.chips = JSON.parse(JSON.stringify(this.chips));
+                this.hostStateBackup.currentTurn = this.currentTurn;
+                this.hostStateBackup.lastMove = this.lastMove;
+                localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(this.hostStateBackup));
             }
         } else if (type === 'sync') {
             this.sequences = data.sequences;
@@ -560,6 +567,12 @@ class SequenceGame {
             }
             if (this.isHost) {
                 this.broadcast('sync', data, peerId);
+            } else if (this.hostStateBackup) {
+                // Keep backup fresh for potential takeover
+                this.hostStateBackup.sequences = this.sequences;
+                this.hostStateBackup.sequenceGrid = JSON.parse(JSON.stringify(this.sequenceGrid));
+                this.hostStateBackup.lockedSequences = JSON.parse(JSON.stringify(this.lockedSequences));
+                localStorage.setItem(`sequence_gameState_${this.currentRoomId}`, JSON.stringify(this.hostStateBackup));
             }
         } else if (type === 'emoji') {
             this.showEmojiFloat(data);
@@ -1037,6 +1050,7 @@ class SequenceGame {
 
         this.log(`🎨 ${this.myName || 'Player'} on team ${this.myColor.toUpperCase()}`);
         this.log(`🃏 Cards dealt! ${this.currentTurn} goes first.`);
+        this.redrawSequenceLines();
     }
 
     initGameElements() {
