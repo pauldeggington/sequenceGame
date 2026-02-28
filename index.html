@@ -135,6 +135,17 @@
                                 <div id="my-team-indicator"
                                     style="font-size: 1.1em; margin-top: 5px; color: var(--gold);">You are: <strong
                                         id="my-team-name"></strong></div>
+
+                                <div id="host-dropped-warning"
+                                    style="display:none; margin-top: 10px; padding: 10px; background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 50, 50, 0.5); border-radius: 8px; color: white;">
+                                    <span style="font-weight: bold;">⚠ Host Connection Lost!</span>
+                                    <span id="host-reconnect-timer"
+                                        style="display: block; font-size: 0.9em; margin-bottom: 5px;">Attempting to
+                                        reconnect...</span>
+                                    <button id="take-over-host-btn" class="premium-button secondary"
+                                        style="display:none; padding: 5px 15px; font-size: 0.9em;">Take Over as
+                                        Host</button>
+                                </div>
                             </div>
                             <div id="connection-status" class="glass-panel">
                                 <div class="turn-indicator" id="turn-indicator">Waiting...</div>
