@@ -585,12 +585,13 @@ class SequenceGame {
                 this.redrawSequenceLines();
             }
         } else if (type === 'move') {
-            this.applyOpponentMove(data, peerId);
+            // Update lastMove BEFORE applyOpponentMove, since it calls renderBoard()
             if (data.moveType === 'place') {
                 this.lastMove = { r: data.row, c: data.col };
             } else if (data.moveType === 'remove') {
                 this.lastMove = null;
             }
+            this.applyOpponentMove(data, peerId);
             this.currentTurn = data.nextTurn;
             this.updateTurnUI();
             if (this.isHost) {
