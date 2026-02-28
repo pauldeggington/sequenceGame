@@ -15,6 +15,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -238,7 +239,8 @@ body {
     border-radius: 8px;
     color: #fff;
     padding: 10px 14px;
-    font-size: 0.95rem;
+    font-size: 16px;
+    /* 16px prevents iOS Safari from auto-zooming on focus */
     font-family: 'Outfit', sans-serif;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -260,7 +262,8 @@ body {
     border-radius: 8px;
     color: var(--gold-light);
     padding: 10px 12px;
-    font-size: 0.82rem;
+    font-size: 16px;
+    /* 16px prevents iOS Safari from auto-zooming on focus */
     font-family: monospace;
     text-align: center;
     cursor: text;
@@ -574,6 +577,7 @@ header h1 {
     cursor: pointer;
     transition: transform 0.12s;
     user-select: none;
+    -webkit-user-select: none;
     overflow: visible;
     min-width: 0;
     min-height: 0;
@@ -1238,6 +1242,7 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     animation: overlay-fade 0.5s ease;
 }
 
@@ -1285,6 +1290,7 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
     justify-content: center;
     pointer-events: none;
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     animation: overlay-fade 0.3s ease;
 }
 
