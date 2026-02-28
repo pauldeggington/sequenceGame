@@ -420,6 +420,8 @@ body {
     height: 100%;
     overflow-y: auto;
     /* Allow the main content area to scroll if needed */
+    scrollbar-gutter: stable;
+    /* Prevent layout shifting when scrollbar appears */
 }
 
 #setup-screen,
@@ -620,6 +622,8 @@ header h1 {
     position: relative;
     /* Coordinate anchor for cells and SVG */
     margin: 0 auto;
+    perspective: 1000px;
+    /* Improve 3D animation stability */
 }
 
 .cell {
@@ -1411,7 +1415,6 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 #emoji-menu {
     position: absolute;
     bottom: 55px;
-    right: 50px;
     /* Added some space above the button */
     left: 0;
     width: 100%;
