@@ -364,6 +364,8 @@ class SequenceGame {
                 this.updateTeamLabels(ui.teamLabels);
                 if (this.syncPlayers) this.syncPlayers();
                 ui.startBtn.style.display = 'block';
+                // Successor host should broadcast a backup immediately for others to follow
+                if (this.started) this.saveGameState();
             } else {
                 this.connectToHost(roomId);
             }
