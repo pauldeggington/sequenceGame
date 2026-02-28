@@ -211,6 +211,62 @@ body {
     color: var(--gold-light);
 }
 
+/* Strategy card specifics */
+.strategy-card {
+    text-align: left;
+    background: rgba(13, 27, 30, 0.95);
+    border: 1px solid var(--gold);
+}
+
+.strategy-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--gold);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.strategy-item h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    color: var(--gold-light);
+    margin-bottom: 10px;
+}
+
+.strategy-item p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    color: var(--text);
+}
+
+.strategy-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.strategy-list li {
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text);
+    padding-left: 20px;
+    position: relative;
+}
+
+.strategy-list li::before {
+    content: "⚡";
+    color: var(--gold);
+    font-size: 0.8rem;
+    position: absolute;
+    left: 0;
+    top: 2px;
+}
+
+.strategy-list li strong {
+    color: var(--gold-light);
+}
+
 .setup-section {
     margin-bottom: 24px;
 }
