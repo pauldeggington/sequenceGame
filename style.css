@@ -1604,3 +1604,26 @@ input[type="checkbox"]#show-hints-toggle:checked+.toggle-switch::after {
 .sequence-line.green {
     stroke: #55efc4;
 }
+/* ------------------------------------------
+   FOOTER
+   ------------------------------------------ */
+.site-footer {
+    text-align: center;
+    padding: 30px 0;
+    margin-top: auto;
+    width: 100%;
+    z-index: 20;
+    background: rgba(13, 27, 30, 0.5);
+}
+
+.site-footer a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    margin: 0 15px;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.site-footer a:hover {
+    color: var(--gold);
+}
