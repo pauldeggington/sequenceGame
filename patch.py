@@ -111,7 +111,7 @@ for i, line in enumerate(lines):
                 ]
             }
         };
-        this.peer = new Peer(this.isHost ? roomId : undefined, peerConfig);
+        this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
 
         this.peer.on('open', (id) => {
             if (this.isHost) {

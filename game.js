@@ -11,9 +11,13 @@
 // Safari/iOS performance optimization
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || /CriOS/i.test(navigator.userAgent);
-if (isIOS || isSafari) {
-    document.body.classList.add('reduced-fx');
-}
+const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (isIOS || isSafari || isMac) {
+        document.body.classList.add('reduced-fx');
+    }
+});
 
 // ── Constants ─────────────────────────────────────────────────
 const BOARD_LAYOUT = [
@@ -215,23 +219,6 @@ class SequenceGame {
             renderSetupState();
         };
 
-        const renderSetupState = () => {
-            playersEl.innerHTML = '';
-            const myDisplay = this.myName || 'You';
-            const me = document.createElement('div');
-            me.className = 'player-entry me';
-            me.innerText = `👤 ${myDisplay}${this.isHost ? ' (Host)' : ''}`;
-            playersEl.appendChild(me);
-
-            this.peers.forEach((pid, i) => {
-                const el = document.createElement('div');
-                el.className = 'player-entry';
-                const peerName = this.peerNames[pid] || `Player ${i + 2}`;
-                el.innerText = `👤 ${peerName}`;
-                playersEl.appendChild(el);
-            });
-        };
-
         // Name input
         nameInput.addEventListener('input', () => {
             this.myName = nameInput.value.trim();
@@ -275,7 +262,7 @@ class SequenceGame {
                 ]
             }
         };
-        this.peer = new Peer(this.isHost ? roomId : undefined, peerConfig);
+        this.peer = this.isHost ? new Peer(roomId, peerConfig) : new Peer(peerConfig);
 
         this.peer.on('open', (id) => {
             if (this.isHost) {
@@ -375,6 +362,7 @@ class SequenceGame {
 
         // ── Setup UI ──
         // Team buttons
+
 
         document.querySelectorAll('.team-btn').forEach(btn => {
             btn.onmousedown = () => { // focus fix
