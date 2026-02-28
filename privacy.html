@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Very Wild Jacks</title>
+    <meta name="description" content="Privacy Policy for Very Wild Jacks online board game.">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap"
+        rel="stylesheet">
+    <style>
+        .page-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .page-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            color: var(--text);
+        }
+
+        .page-card h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--gold), #f0c27f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .page-card h2 {
+            color: var(--gold);
+            font-size: 1.3rem;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+
+        .page-card p,
+        .page-card li {
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+
+        .page-card ul {
+            padding-left: 20px;
+        }
+
+        .page-card a {
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .page-card a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .last-updated {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-container">
+        <a href="index.html" class="back-link">← Back to Game</a>
+        <div class="page-card">
+            <h1>Privacy Policy</h1>
+            <p class="last-updated">Last updated: February 28, 2026</p>
+
+            <h2>Overview</h2>
+            <p>Very Wild Jacks ("we", "our", "the game") is a free-to-play online board game. We are committed to
+                protecting your privacy. This policy explains what information we collect and how we use it.</p>
+
+            <h2>Information We Collect</h2>
+            <p>We collect minimal information to provide the game experience:</p>
+            <ul>
+                <li><strong>Player Name:</strong> The display name you enter is stored locally on your device using
+                    browser localStorage. It is shared with other players in your game session only.</li>
+                <li><strong>Game Session Data:</strong> Room IDs and game state are stored temporarily in your browser's
+                    localStorage to support reconnection. This data is not sent to any server beyond what is needed for
+                    peer-to-peer connections.</li>
+                <li><strong>Connection Data:</strong> We use PeerJS for peer-to-peer connections. PeerJS may collect
+                    connection metadata (such as IP addresses) as part of establishing WebRTC connections. Please refer
+                    to the <a href="https://peerjs.com/" target="_blank">PeerJS documentation</a> for their privacy
+                    practices.</li>
+            </ul>
+
+            <h2>Cookies & Local Storage</h2>
+            <p>We use browser localStorage to save your player name and game session information. We do not use tracking
+                cookies. Third-party advertising partners (Google AdSense) may use cookies to serve relevant ads.</p>
+
+            <h2>Third-Party Services</h2>
+            <ul>
+                <li><strong>Google AdSense:</strong> We use Google AdSense to display advertisements. Google may use
+                    cookies and web beacons to serve ads based on your browsing activity. You can learn more at <a
+                        href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</li>
+                <li><strong>PeerJS:</strong> Used for peer-to-peer game connections. See <a href="https://peerjs.com/"
+                        target="_blank">PeerJS</a> for details.</li>
+            </ul>
+
+            <h2>Data Sharing</h2>
+            <p>We do not sell, trade, or share your personal information with third parties. Your player name is only
+                visible to other players in your active game session.</p>
+
+            <h2>Children's Privacy</h2>
+            <p>This game is suitable for all ages. We do not knowingly collect personal information from children under
+                13. If you believe a child has provided personal information, please contact us.</p>
+
+            <h2>Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. Changes will be reflected on this page with an
+                updated date.</p>
+
+            <h2>Contact</h2>
+            <p>If you have questions about this Privacy Policy, please reach out via our <a
+                    href="https://github.com/pauldeggington/sequenceGame2" target="_blank">GitHub repository</a>.</p>
+        </div>
+    </div>
+</body>
+
+</html>

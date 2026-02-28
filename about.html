@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Very Wild Jacks</title>
+    <meta name="description" content="About Very Wild Jacks - a free online multiplayer board game.">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap"
+        rel="stylesheet">
+    <style>
+        .page-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .page-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            color: var(--text);
+        }
+
+        .page-card h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--gold), #f0c27f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        .page-card h2 {
+            color: var(--gold);
+            font-size: 1.3rem;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+
+        .page-card p,
+        .page-card li {
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+
+        .page-card ul {
+            padding-left: 20px;
+        }
+
+        .page-card a {
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .page-card a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .feature-item .emoji {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .feature-item strong {
+            color: var(--gold);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-container">
+        <a href="index.html" class="back-link">← Back to Game</a>
+        <div class="page-card">
+            <h1>About Very Wild Jacks</h1>
+
+            <p>Very Wild Jacks is a free online multiplayer board game inspired by the classic Sequence card game. Play
+                with friends in real-time using peer-to-peer connections — no accounts, no downloads, no servers storing
+                your data.</p>
+
+            <h2>How It Works</h2>
+            <p>Simply create a room, share the invite link with your friends, and start playing! The game uses WebRTC
+                technology through PeerJS to connect players directly to each other, ensuring fast and responsive
+                gameplay.</p>
+
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="emoji">🎮</div>
+                    <strong>Multiplayer</strong>
+                    <p>Play with 2-6 players online</p>
+                </div>
+                <div class="feature-item">
+                    <div class="emoji">🤖</div>
+                    <strong>Single Player</strong>
+                    <p>Practice against AI opponents</p>
+                </div>
+                <div class="feature-item">
+                    <div class="emoji">📱</div>
+                    <strong>Mobile Friendly</strong>
+                    <p>Play on any device with a browser</p>
+                </div>
+                <div class="feature-item">
+                    <div class="emoji">🔒</div>
+                    <strong>Private</strong>
+                    <p>No accounts or sign-ups required</p>
+                </div>
+            </div>
+
+            <h2>Open Source</h2>
+            <p>Very Wild Jacks is an open-source project. You can view the source code, report issues, or contribute on
+                <a href="https://github.com/pauldeggington/sequenceGame2" target="_blank">GitHub</a>.
+            </p>
+
+            <h2>Contact</h2>
+            <p>Have feedback, found a bug, or want to suggest a feature? Open an issue on our <a
+                    href="https://github.com/pauldeggington/sequenceGame2/issues" target="_blank">GitHub Issues</a>
+                page.</p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -476,6 +476,8 @@ body {
     height: 100%;
     overflow-y: auto;
     /* Allow the main content area to scroll if needed */
+    scrollbar-gutter: stable;
+    /* Prevent layout shifting when scrollbar appears */
 }
 
 #setup-screen,
@@ -485,6 +487,8 @@ body {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    /* Prevent animation overshoot from shaking viewport */
 }
 
 .sidebar-wrapper {
@@ -552,6 +556,8 @@ body {
     padding: 6px 10px;
     gap: 4px;
     margin: 0 auto;
+    overflow: hidden;
+    /* Contain animation overshoot */
 }
 
 header {
@@ -580,15 +586,21 @@ header h1 {
 }
 
 #host-dropped-warning {
-    margin-top: 8px;
+    position: absolute;
+    top: 80px;
+    left: 10px;
+    margin-top: 0;
     padding: 10px;
-    background: rgba(192, 57, 43, 0.25);
+    background: rgba(192, 57, 43, 0.9);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     border: 1px solid rgba(192, 57, 43, 0.5);
     border-radius: 8px;
     color: white;
     max-width: 280px;
-    width: fit-content;
-    z-index: 100;
+    width: calc(100vw - 20px);
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 #host-reconnect-timer {
@@ -670,6 +682,9 @@ header h1 {
     position: relative;
     /* Coordinate anchor for cells and SVG */
     margin: 0 auto;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+    /* Improve 3D animation stability */
 }
 
 .cell {
@@ -688,6 +703,8 @@ header h1 {
     min-width: 0;
     min-height: 0;
     touch-action: manipulation;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 .cell-card-img,
@@ -876,6 +893,8 @@ header h1 {
         inset 0 -2px 4px rgba(0, 0, 0, 0.3);
     border: 2px solid rgba(255, 255, 255, 0.2);
     animation: chip-drop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 @keyframes chip-drop {
@@ -951,6 +970,8 @@ header h1 {
     overflow: visible;
     border: none;
     touch-action: manipulation;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 .hand-card-img {
