@@ -357,7 +357,8 @@ class SequenceGame {
             metaDesc.setAttribute('content', `Join my game of Very Wild Jacks! Room ID: ${roomId}. Play Sequence online with friends.`);
         }
 
-        const shareUrl = `${window.location.origin}${window.location.pathname}#${roomId}`;
+        const basePath = window.location.pathname.replace(/\/index\.html$/, '/');
+        const shareUrl = `${window.location.origin}${basePath}#${roomId}`;
 
         // Cleanup old peer if exists
         if (this.peer && !this.peer.destroyed) {
@@ -1101,6 +1102,8 @@ class SequenceGame {
         this.chips = Array(10).fill(null).map(() => Array(10).fill(null));
         this.sequences = { red: 0, blue: 0, green: 0 };
 
+        this.saveGameState(); // CRITICAL: Save initial game state
+
         this.showGameScreen();
     }
 
@@ -1557,6 +1560,10 @@ class SequenceGame {
         this.updateJackHint();
         this.checkSequences();
 
+        if (this.isHost) {
+            this.saveGameState(); // CRITICAL: Save state after host moves
+        }
+
         this.checkAndTriggerAITurn();
     }
 
@@ -1900,6 +1907,10 @@ class SequenceGame {
         this.renderBoard();
         this.updateTurnUI();
         this.checkSequences();
+
+        if (this.isHost) {
+            this.saveGameState(); // CRITICAL: Save state after AI moves
+        }
 
         this.checkAndTriggerAITurn();
     }
